@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Navigation Container</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- 启动视频播放器 -->
+    <div id="video-container" class="video-container">
+        <video id="init-video" class="init-video" autoplay muted>
+            <source src="assets/load/init.mp4" type="video/mp4">
+            您的浏览器不支持视频播放。
+        </video>
+        <div id="skip-hint" class="skip-hint">按 ESC 跳过</div>
+    </div>
+
+    <!-- 启动加载轮播图 -->
+    <div id="carousel-container" class="carousel-container hidden">
+        <div id="carousel-slides" class="carousel-slides"></div>
+        <div class="carousel-indicators" id="carousel-indicators"></div>
+        <div class="carousel-progress" id="carousel-progress">
+            <div class="carousel-progress-bar" id="carousel-progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div id="main-content" class="main-content">
+        <!-- 启动器视图 -->
+        <div id="launcher-view" class="view active">
+            <h1>应用启动器</h1>
+            <div class="apps-grid">
+                <div class="app-icon" data-app="baidu">
+                    <img src="assets/icons/baidu.png" alt="百度">
+                    <span>百度</span>
+                </div>
+                <div class="app-icon" data-app="bing">
+                    <img src="assets/icons/bing.png" alt="必应">
+                    <span>必应</span>
+                </div>
+                <div class="app-icon" data-app="settings">
+                    <img src="assets/icons/settings.png" alt="设置">
+                    <span>设置</span>
+                </div>
+                <div class="app-icon" data-app="shutdown">
+                    <img src="assets/icons/shutdown.png" alt="切换系统">
+                    <span>切换系统</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 应用窗口容器 -->
+        <div id="app-windows-container" class="app-windows-container"></div>
+    </div>
+
+    <!-- 底部 Dock 栏 -->
+    <div id="dock-bar" class="dock-bar">
+        <div class="dock-item" id="home-button">
+            <img src="assets/icons/icons8-Home-100.png" alt="主页">
+        </div>
+        <div id="dock-apps" class="dock-apps"></div>
+        <div class="dock-time">
+            <span id="current-time">--:--:--</span>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

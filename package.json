@@ -1,0 +1,75 @@
+{
+  "name": "web-navigation-container",
+  "version": "1.0.0",
+  "description": "Electron-based navigation container for web applications",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "keywords": [
+    "electron",
+    "navigation",
+    "web-apps"
+  ],
+  "author": "Developer",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "systeminformation": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.webnavigation.container",
+    "productName": "Web Navigation Container",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "configs/**/*",
+      "utils/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "configs/**/*"
+    ],
+    "win": {
+      "target": {
+        "target": "dir",
+        "arch": ["x64"]
+      },
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icons/app-icon.icns",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icons/app-icon.png",
+      "category": "Utility"
+    }
+  }
+}

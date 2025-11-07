@@ -1,0 +1,190 @@
+{
+  "apps": [
+    {
+      "id": "flow-modeling",
+      "name": "流程化建模",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-flow-chart-100.png",
+      "visible": true
+    },
+    {
+      "id": "coal-gene",
+      "name": "全国煤炭基因库",
+      "type": "web",
+      "url": "https://www.hao123.com",
+      "icon": "icons8-biotech-100.png",
+      "visible": true
+    },
+    {
+      "id": "scene-deduction",
+      "name": "场景推演",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-signpost-100.png",
+      "visible": true
+    },
+    {
+      "id": "monitor-data",
+      "name": "监测数据管理",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-database-100.png",
+      "visible": true
+    },
+    {
+      "id": "physical-analysis",
+      "name": "物性分析",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-microscope-100.png",
+      "visible": true
+    },
+    {
+      "id": "multidimensional-fusion",
+      "name": "多维数据融合分析",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-layers-100.png",
+      "visible": true
+    },
+    {
+      "id": "lingxi-knowledge",
+      "name": "灵犀-知识图谱",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-connect-100.png",
+      "visible": true
+    },
+    {
+      "id": "digital-lab",
+      "name": "数字实验室",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-prism-100.png",
+      "visible": true
+    },
+    {
+      "id": "support-nav",
+      "name": "支护导航系统",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-robotic-arm-100.png",
+      "visible": true
+    },
+    {
+      "id": "geological-system",
+      "name": "地质保障系统",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-pickaxe-100.png",
+      "visible": true
+    },
+    {
+      "id": "di-tun-hua-jing",
+      "name": "地遁化境",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-worldwide-location-100.png",
+      "visible": true
+    },
+    {
+      "id": "stress-monitor",
+      "name": "三维应力在线监测",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-wind-rose-100.png",
+      "visible": true
+    },
+    {
+      "id": "rock-forum",
+      "name": "数字岩石力学论坛",
+      "type": "web",
+      "url": "https://www.baidu.com",
+      "icon": "icons8-messaging-100.png",
+      "visible": true
+    },
+    {
+      "id": "account-management",
+      "name": "账号管理",
+      "type": "web",
+      "url": "https://www.360.com",
+      "icon": "icons8-badge-100.png",
+      "visible": true
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "type": "web",
+      "url": "#settings",
+      "icon": "icons8-adjust-100.png",
+      "visible": true
+    },
+    {
+      "id": "desktop",
+      "name": "切换模式",
+      "type": "web",
+      "url": "#quit",
+      "icon": "icons8-change-100.png",
+      "visible": true
+    },
+     {
+      "id": "local-app",
+      "name": "计算器",
+      "type": "local",
+      "path": "/Applications/Calculator.app",
+      "icon": "icons8-calculator-100.png",
+      "visible": true
+    }
+  ],
+  "interface": {
+    "showSettingsButton": false,
+    "showStatusBar": true
+  },
+  "initVideo": {
+    "enabled": true,
+    "path": "assets/load/init.mp4",
+    "allowSkip": true
+  },
+  "background": {
+    "imageUrl": "assets/background/default.png",
+    "overlayOpacity": 0,
+    "blur": 20
+  },
+  "layout": {
+    "columns": 8,
+    "rows": 6
+  },
+  "carousel": {
+    "enabled": true,
+    "images": [
+      "assets/carousel/miaosuan.gif",
+      "assets/carousel/diting.gif",
+      "assets/carousel/dianshi.gif"
+    ],
+    "switchTime": 3000,
+    "displayDuration": 10
+  },
+  "icon": {
+    "hideName": false,
+    "showShadow": false,
+    "enableAnimation": false,
+    "showBackground": false,
+    "size": 105
+  },
+  "spacing": {
+    "containerPaddingVertical": 200,
+    "containerPaddingHorizontal": 100,
+    "iconGap": 8
+  },
+  "dock": {
+    "backgroundColor": "#205a7e",
+    "backgroundOpacity": 90,
+    "blur": 0
+  },
+  "window": {
+    "borderColor": "#3300ff",
+    "titleColor": "#ffffff",
+    "headerBackgroundColor": "#38698a"
+  }
+}

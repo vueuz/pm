@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置</title>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+    <div class="settings-container">
+        <header class="settings-header">
+            <h1>设置</h1>
+            <div class="header-actions">
+                <button id="show-config-path" class="btn btn-info" title="显示配置文件路径">配置路径</button>
+                <button id="reset-config" class="btn btn-secondary">恢复默认</button>
+                <button id="export-config" class="btn btn-primary">导出配置</button>
+                <input type="file" id="import-config-input" accept=".json" style="display: none;">
+                <button id="import-config" class="btn btn-secondary">导入配置</button>
+            </div>
+        </header>
+
+        <div class="settings-content">
+            <aside class="settings-sidebar">
+                <nav class="settings-nav">
+                    <ul>
+                        <li class="nav-item active" data-target="app-config">应用配置</li>
+                        <li class="nav-item" data-target="interface-config">界面元素</li>
+                        <li class="nav-item" data-target="background-config">背景设置</li>
+                        <li class="nav-item" data-target="layout-config">布局设置</li>
+                        <li class="nav-item" data-target="carousel-config">轮播图设置</li>
+                        <li class="nav-item" data-target="icon-config">图标设置</li>
+                        <li class="nav-item" data-target="dock-config">Dock栏设置</li>
+                        <li class="nav-item" data-target="window-config">窗口设置</li>
+                    </ul>
+                </nav>
+            </aside>
+
+            <main class="settings-main">
+                <!-- 应用配置 -->
+                <section id="app-config" class="settings-section active">
+                    <h2>应用配置</h2>
+                    <div id="apps-list" class="apps-config-list">
+                        <!-- 应用配置项将通过JavaScript动态生成 -->
+                    </div>
+                </section>
+
+                <!-- 界面元素配置 -->
+                <section id="interface-config" class="settings-section">
+                    <h2>界面元素配置</h2>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">显示设置按钮</span>
+                            <label class="radio-option">
+                                <input type="radio" name="show-settings-button" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="show-settings-button" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">显示顶部状态栏</span>
+                            <label class="radio-option">
+                                <input type="radio" name="show-status-bar" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="show-status-bar" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- 背景设置 -->
+                <section id="background-config" class="settings-section">
+                    <h2>导航页背景设置</h2>
+                    <div class="form-group">
+                        <label for="background-image">背景图片地址</label>
+                        <input type="text" id="background-image" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="overlay-opacity">遮罩浓度 (%)</label>
+                        <input type="range" id="overlay-opacity" class="form-range" min="0" max="100" step="1">
+                        <span id="overlay-opacity-value" class="range-value">30</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="background-blur">背景模糊度</label>
+                        <input type="range" id="background-blur" class="form-range" min="0" max="20" step="1">
+                        <span id="background-blur-value" class="range-value">0</span>
+                    </div>
+                </section>
+
+                <!-- 布局设置 -->
+                <section id="layout-config" class="settings-section">
+                    <h2>布局设置</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="layout-columns">每行图标数 (>=8)</label>
+                            <input type="number" id="layout-columns" class="form-control" min="8">
+                        </div>
+                        <div class="form-group">
+                            <label for="layout-rows">每列图标数</label>
+                            <input type="number" id="layout-rows" class="form-control" min="1">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 轮播图设置 -->
+                <section id="carousel-config" class="settings-section">
+                    <h2>启动轮播图</h2>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">启用轮播图</span>
+                            <label class="radio-option">
+                                <input type="radio" name="carousel-enabled" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="carousel-enabled" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="carousel-images">图片 (每行一个URL)</label>
+                        <textarea id="carousel-images" class="form-control" rows="4" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="switch-time">切换时间 (毫秒)</label>
+                        <input type="number" id="switch-time" class="form-control" min="1000" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="display-duration">总显示时长 (毫秒)</label>
+                        <input type="number" id="display-duration" class="form-control" min="1000" step="1000">
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;">开屏视频设置</h3>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">启用开屏视频</span>
+                            <label class="radio-option">
+                                <input type="radio" name="init-video-enabled" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="init-video-enabled" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">允许按ESC跳过开屏视频</span>
+                            <label class="radio-option">
+                                <input type="radio" name="init-video-allow-skip" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="init-video-allow-skip" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                </section>
+
+                <!-- 图标设置 -->
+                <section id="icon-config" class="settings-section">
+                    <h2>图标细节设置</h2>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">隐藏图标名称</span>
+                            <label class="radio-option">
+                                <input type="radio" name="hide-icon-name" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="hide-icon-name" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">显示图标阴影</span>
+                            <label class="radio-option">
+                                <input type="radio" name="show-icon-shadow" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="show-icon-shadow" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">启用过渡动画</span>
+                            <label class="radio-option">
+                                <input type="radio" name="enable-animation" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="enable-animation" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">显示图标背景色</span>
+                            <label class="radio-option">
+                                <input type="radio" name="show-icon-background" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="show-icon-background" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="icon-size">图标尺寸 (%)</label>
+                        <input type="range" id="icon-size" class="form-range" min="50" max="200" step="5">
+                        <span id="icon-size-value" class="range-value">100</span>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;">间距设置</h3>
+                    <div class="form-group">
+                        <label for="container-padding-vertical">图标容器上下边距 (px)</label>
+                        <input type="range" id="container-padding-vertical" class="form-range" min="0" max="200" step="5">
+                        <span id="container-padding-vertical-value" class="range-value">20</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="container-padding-horizontal">图标容器左右边距 (px)</label>
+                        <input type="range" id="container-padding-horizontal" class="form-range" min="0" max="100" step="5">
+                        <span id="container-padding-horizontal-value" class="range-value">20</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="icon-gap">图标之间的间隔 (px)</label>
+                        <input type="range" id="icon-gap" class="form-range" min="0" max="50" step="2">
+                        <span id="icon-gap-value" class="range-value">20</span>
+                    </div>
+                </section>
+                
+                <!-- Dock栏设置 -->
+                <section id="dock-config" class="settings-section">
+                    <h2>Dock栏设置</h2>
+                    <div class="form-group">
+                        <label for="dock-bg-color">Dock栏背景颜色</label>
+                        <input type="color" id="dock-bg-color" class="form-control" value="#000000">
+                    </div>
+                    <div class="form-group">
+                        <label for="dock-bg-opacity">Dock栏背景浓度 (%)</label>
+                        <input type="range" id="dock-bg-opacity" class="form-range" min="0" max="100" step="5">
+                        <span id="dock-bg-opacity-value" class="range-value">50</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="dock-blur">Dock栏模糊度 (px)</label>
+                        <input type="range" id="dock-blur" class="form-range" min="0" max="40" step="2">
+                        <span id="dock-blur-value" class="range-value">20</span>
+                    </div>
+                </section>
+                
+                <!-- 窗口设置 -->
+                <section id="window-config" class="settings-section">
+                    <h2>窗口设置</h2>
+                    <div class="form-group">
+                        <label for="window-border-color">窗口边框颜色</label>
+                        <input type="color" id="window-border-color" class="form-control" value="#dddddd">
+                    </div>
+                    <div class="form-group">
+                        <label for="window-title-color">窗口标题文字颜色</label>
+                        <input type="color" id="window-title-color" class="form-control" value="#333333">
+                    </div>
+                    <div class="form-group">
+                        <label for="window-header-bg-color">窗口标题栏背景颜色</label>
+                        <input type="color" id="window-header-bg-color" class="form-control" value="#f5f5f5">
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>
