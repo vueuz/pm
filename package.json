@@ -23,7 +23,8 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "systeminformation": "^5.0.0"
+    "systeminformation": "^5.0.0",
+    "koffi": "^2.6.7"
   },
   "build": {
     "appId": "com.webnavigation.container",
