@@ -186,5 +186,13 @@
     "borderColor": "#3300ff",
     "titleColor": "#ffffff",
     "headerBackgroundColor": "#38698a"
+  },
+  "security": {
+    "windowLock": true,
+    "hotkeyBlock": true,
+    "lockCheckInterval": 1000,
+    "preventMinimize": true,
+    "preventFocusLoss": true,
+    "requireAdminRights": true
   }
 }

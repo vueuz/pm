@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electro
 const path = require('path');
 const si = require('systeminformation');
 const configManager = require('./utils/configManager');
-const hotkeyBlocker = require('./utils/hotkeyBlocker');
+const securityManager = require('./utils/securityManager');
 
 // 主窗口引用
 let mainWindow = null;
@@ -32,26 +32,8 @@ function createMainWindow() {
   // 加载主界面
   mainWindow.loadFile('renderer/index.html');
 
-  // 窗口锁定强化
-  mainWindow.setAlwaysOnTop(true, 'screen-saver');
-  mainWindow.setFullScreen(true);
-  mainWindow.setFocusable(true);
-  mainWindow.setSkipTaskbar(true);
-
-  // 防最小化 / 失焦 / 退出等定时检查
-  if (!global.windowLockInterval) {
-    global.windowLockInterval = setInterval(() => {
-      if (!mainWindow) return;
-      try {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        if (!mainWindow.isFocused()) { mainWindow.focus(); }
-        if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
-        mainWindow.setAlwaysOnTop(true, 'screen-saver');
-      } catch (e) {
-        // 忽略错误
-      }
-    }, 1000);
-  }
+  // 初始化安全管理器（窗口锁定 + 热键拦截）
+  securityManager.initialize(mainWindow);
 
   // 开发模式下打开开发者工具
   if (process.env.NODE_ENV === 'development') {
@@ -143,14 +125,6 @@ async function getSystemInfo() {
 app.whenReady().then(() => {
   createMainWindow();
 
-  // 启动 Windows 热键拦截（仅在 win32）
-  try {
-    const started = require('os').platform() === 'win32' ? hotkeyBlocker.start() : false;
-    if (started) console.log('Windows 热键拦截已启用');
-  } catch (e) {
-    console.warn('热键拦截启动失败:', e && e.message);
-  }
-
   // 注册IPC处理程序
   registerIPCHandlers();
 
@@ -235,6 +209,10 @@ function registerIPCHandlers() {
   ipcMain.handle('open-settings-window', () => {
     createSettingsWindow();
   });
+
+  ipcMain.handle('get-security-status', () => {
+    return securityManager.getStatus();
+  });
 }
 
 // 注册全局快捷键
@@ -284,5 +262,5 @@ app.on('window-all-closed', () => {
 // 应用退出前注销所有快捷键
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
-  try { hotkeyBlocker.stop && hotkeyBlocker.stop(); } catch {}
+  securityManager.cleanup();
 });

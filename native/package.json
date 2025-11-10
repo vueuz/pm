@@ -1,0 +1,14 @@
+{
+  "name": "hotkey-blocker-native",
+  "version": "1.0.0",
+  "description": "Native addon for blocking system hotkeys on Windows",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild"
+  },
+  "gypfile": true,
+  "dependencies": {
+    "node-addon-api": "^7.0.0",
+    "node-gyp": "^10.0.0"
+  }
+}
