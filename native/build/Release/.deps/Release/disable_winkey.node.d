@@ -1,0 +1,1 @@
+cmd_Release/disable_winkey.node := c++ -bundle -undefined dynamic_lookup -Wl,-search_paths_first -mmacosx-version-min=10.7 -arch arm64 -L./Release -stdlib=libc++  -o Release/disable_winkey.node Release/obj.target/disable_winkey/src/addon.o Release/obj.target/disable_winkey/src/mac_impl.o -framework CoreFoundation -framework ApplicationServices
