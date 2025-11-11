@@ -79,6 +79,18 @@ function createMainWindow() {
     }
   });
 
+  // 窗口失焦时恢复按键
+  mainWindow.on('blur', () => {
+    if (nativeKeyBlocker) {
+      try {
+        nativeKeyBlocker.enableAll();
+        console.log('窗口失焦，恢复按键');
+      } catch (err) {
+        console.error('恢复按键失败:', err.message);
+      }
+    }
+  });
+
   // 监听窗口关闭事件
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -316,6 +328,11 @@ app.on('will-quit', () => {
     }
   }
   
+  // 注销全局快捷键
   globalShortcut.unregisterAll();
-  try { hotkeyBlocker.stop && hotkeyBlocker.stop(); } catch {}
+  
+  // 停止热键拦截
+  try { 
+    hotkeyBlocker.stop && hotkeyBlocker.stop(); 
+  } catch {}
 });
