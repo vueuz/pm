@@ -190,32 +190,3 @@ module.exports = {
   },
   HotkeyBlocker
 };
-
-// 平台统一入口：根据操作系统加载对应实现
-
-let impl = null;
-
-function start() {
-  try {
-    if (process.platform === 'win32') {
-      impl = require('./windowsHotkeyBlocker');
-      return impl.start();
-    }
-    return false;
-  } catch (e) {
-    console.warn('hotkeyBlocker.start error:', e && e.message);
-    return false;
-  }
-}
-
-function stop() {
-  try {
-    if (impl && typeof impl.stop === 'function') {
-      impl.stop();
-    }
-  } catch (e) {
-    console.warn('hotkeyBlocker.stop error:', e && e.message);
-  }
-}
-
-module.exports = { start, stop };

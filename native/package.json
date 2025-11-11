@@ -1,14 +1,37 @@
 {
-  "name": "hotkey-blocker-native",
+  "name": "disable-winkey-addon",
   "version": "1.0.0",
-  "description": "Native addon for blocking system hotkeys on Windows",
+  "description": "Node.js C++ Addon library to disable Windows key",
   "main": "index.js",
   "scripts": {
-    "install": "node-gyp rebuild"
+    "build": "node-gyp rebuild",
+    "install": "node-gyp rebuild",
+    "test": "node test.js"
   },
-  "gypfile": true,
   "dependencies": {
-    "node-addon-api": "^7.0.0",
+    "bindings": "^1.5.0",
+    "node-addon-api": "^7.0.0"
+  },
+  "devDependencies": {
     "node-gyp": "^10.0.0"
+  },
+  "keywords": [
+    "windows",
+    "winkey",
+    "keyboard",
+    "hook",
+    "disable",
+    "addon",
+    "native"
+  ],
+  "author": "",
+  "license": "MIT",
+  "gypfile": true,
+  "os": [
+    "win32",
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

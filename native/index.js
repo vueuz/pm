@@ -1,13 +1,35 @@
-// Native addon 入口
-try {
-  const addon = require('./build/Release/hotkey_blocker.node');
-  module.exports = addon;
-} catch (err) {
-  console.warn('原生热键拦截模块加载失败，仅在 Windows 平台可用:', err.message);
-  // 提供降级接口
-  module.exports = {
-    start: () => false,
-    stop: () => true,
-    isActive: () => false
-  };
+const bindings = require('bindings');
+
+const addon = bindings('disable_winkey');
+
+/**
+ * A manager for handling keyboard key state.
+ */
+class KeyManager {
+    constructor() {
+        // State is managed internally by the native addon.
+    }
+    /**
+     * Enables all functionalities.
+     */
+    enableAll() {
+        return addon.enableAll();
+    }
+
+    /**
+     * Disables all functionalities.
+     */
+    disableAll() {
+        return addon.disableAll();
+    }
 }
+
+const keyManager = new KeyManager();
+
+// To solve the `this` context issue cleanly, we export functions
+// that are guaranteed to call the methods on the single instance.
+module.exports = {
+    KeyManager,
+    enableAll: () => keyManager.enableAll(),
+    disableAll: () => keyManager.disableAll(),
+};

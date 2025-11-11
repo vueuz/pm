@@ -1,30 +1,41 @@
 {
   "targets": [
     {
-      "target_name": "hotkey_blocker",
+      "target_name": "disable_winkey",
       "sources": [
         "src/addon.cpp"
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"
       ],
-      "dependencies": [
-        "<!(node -p \"require('node-addon-api').gyp\")"
-      ],
       "defines": [
         "NAPI_DISABLE_CPP_EXCEPTIONS"
       ],
+      "cflags!": ["-fno-exceptions"],
+      "cflags_cc!": ["-fno-exceptions"],
       "conditions": [
-        [
-          "OS=='win'",
-          {
-            "msvs_settings": {
-              "VCCLCompilerTool": {
-                "ExceptionHandling": 1
-              }
+        ['OS=="win"', {
+          "sources": [ "src/win_impl.cpp" ],
+          "libraries": ["-luser32"],
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "ExceptionHandling": 1
             }
           }
-        ]
+        }],
+        ['OS=="mac"', {
+          "sources": [ "src/mac_impl.cpp" ],
+          "xcode_settings": {
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+            'MACOSX_DEPLOYMENT_TARGET': '10.7',
+          },
+          "link_settings": {
+            "libraries": [
+              "-framework CoreFoundation",
+              "-framework ApplicationServices"
+            ]
+          }
+        }]
       ]
     }
   ]
