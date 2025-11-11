@@ -494,6 +494,17 @@ async function handleAppIconClick(event) {
     const app = appStore.apps.find(a => a.id === appId);
     if (!app) return;
     
+    // 检查应用URL，处理特殊操作
+    if (app.url === '#quit') {
+        // 退出整个应用
+        if (typeof electronAPI !== 'undefined' && electronAPI.quitApp) {
+            electronAPI.quitApp();
+        } else {
+            window.close();
+        }
+        return;
+    }
+    
     switch (appId) {
         case 'settings':
             // 已在上面处理
