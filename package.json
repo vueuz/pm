@@ -6,6 +6,12 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
+    "check-native": "node check-native.js",
+    "setup-native": "cd native && npm install",
+    "prebuild": "cd native && npm install && npm run build",
+    "prebuild:win": "cd native && npm install && npm run build",
+    "prebuild:mac": "cd native && npm install && npm run build",
+    "prebuild:linux": "cd native && npm install && npm run build",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
@@ -20,7 +26,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^39.1.0",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "fs-extra": "^11.1.1"
   },
   "dependencies": {
     "koffi": "^2.14.1",
@@ -39,11 +46,26 @@
       "configs/**/*",
       "utils/**/*",
       "assets/**/*",
-      "node_modules/**/*"
+      "native/index.js",
+      "native/build/Release/*.node",
+      "node_modules/**/*",
+      "!node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!node_modules/*.d.ts",
+      "!node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
     "asarUnpack": [
-      "configs/**/*"
+      "configs/**/*",
+      "native/**/*"
     ],
+    "afterPack": "./build-hooks.js",
     "win": {
       "target": {
         "target": "dir",

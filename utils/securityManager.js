@@ -3,14 +3,23 @@
  */
 
 const hotkeyBlocker = require('./hotkeyBlocker');
+const path = require('path');
+const { app } = require('electron');
 
 // 加载原生模块用于按键禁用
 let nativeKeyBlocker = null;
 try {
+  const isDev = !app.isPackaged;
+  console.log('🔍 环境检测:');
+  console.log('   - 开发模式:', isDev);
+  console.log('   - 资源路径:', process.resourcesPath);
+  console.log('   - 应用路径:', app.getAppPath());
+  
   nativeKeyBlocker = require('../native');
   console.log('✅ 原生按键禁用模块加载成功');
 } catch (err) {
   console.warn('⚠️  原生按键禁用模块加载失败:', err.message);
+  console.warn('   完整错误:', err.stack);
 }
 
 class SecurityManager {
