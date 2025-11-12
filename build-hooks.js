@@ -17,9 +17,17 @@ exports.default = async function(context) {
     console.log('========================================\n');
 
     // 确定原生模块的源路径和目标路径
-    const nativeSrcDir = path.join(context.appDir, 'native');
+    // 使用 packager.info.appDir 而不是 context.appDir
+    const appDir = packager.info.appDir || packager.appDir || process.cwd();
+    const nativeSrcDir = path.join(appDir, 'native');
     const resourcesDir = path.join(appOutDir, 'resources');
     const nativeDestDir = path.join(resourcesDir, 'app.asar.unpacked', 'native');
+
+    console.log('📂 Paths:');
+    console.log('   App directory:', appDir);
+    console.log('   Native source:', nativeSrcDir);
+    console.log('   Native destination:', nativeDestDir);
+    console.log('');
 
     try {
         // 检查源目录是否存在
