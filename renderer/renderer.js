@@ -487,6 +487,7 @@ async function handleAppIconClick(event) {
             }
         } catch (error) {
             console.error('打开设置窗口失败:', error);
+            alert('打开设置窗口失败: ' + error.message);
         }
         return;
     }
@@ -505,18 +506,9 @@ async function handleAppIconClick(event) {
         return;
     }
     
+    // 处理其他特殊应用
     switch (appId) {
-        case 'settings':
-            // 已在上面处理
-            break;
         case 'quit-app':
-            // 退出整个应用
-            if (typeof electronAPI !== 'undefined' && electronAPI.quitApp) {
-                electronAPI.quitApp();
-            } else {
-                window.close();
-            }
-            break;
         case 'shutdown':
             // 退出整个应用
             if (typeof electronAPI !== 'undefined' && electronAPI.quitApp) {

@@ -102,17 +102,28 @@ class SecurityManager {
    * 设置原生按键禁用
    */
   _setupNativeKeyBlocker() {
-    if (!this.mainWindow || !nativeKeyBlocker) return;
+    if (!nativeKeyBlocker) return;
 
-    // 窗口聚焦时禁用按键
-    this.mainWindow.on('focus', () => {
-      try {
-        nativeKeyBlocker.disableAll();
-        console.log('🔒 窗口聚焦，禁用系统按键');
-      } catch (err) {
-        console.error('❌ 禁用按键失败:', err.message);
-      }
-    });
+    // 应用启动时就禁用按键
+    try {
+      nativeKeyBlocker.disableAll();
+      console.log('🔒 应用启动，禁用系统按键');
+    } catch (err) {
+      console.error('❌ 禁用按键失败:', err.message);
+    }
+
+    // 如果有主窗口，设置窗口聚焦事件
+    if (this.mainWindow) {
+      // 窗口聚焦时禁用按键
+      this.mainWindow.on('focus', () => {
+        try {
+          nativeKeyBlocker.disableAll();
+          console.log('🔒 窗口聚焦，禁用系统按键');
+        } catch (err) {
+          console.error('❌ 禁用按键失败:', err.message);
+        }
+      });
+    }
 
     console.log('✅ 原生按键拦截已配置');
   }

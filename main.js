@@ -3,6 +3,10 @@ const path = require('path');
 const si = require('systeminformation');
 const configManager = require('./utils/configManager');
 const hotkeyBlocker = require('./utils/hotkeyBlocker');
+const { getMachineId } = require('./utils/fingerprint');
+const { verifyLicense } = require('./utils/license');
+const fs = require('fs');
+const { spawn } = require('child_process');
 
 // 加载原生模块用于按键禁用
 let nativeKeyBlocker = null;
@@ -16,6 +20,10 @@ try {
 // 主窗口引用
 let mainWindow = null;
 let settingsWindow = null;
+let activationWindow = null;
+
+// 许可证存储路径
+const licenseFile = path.join(app.getPath('userData'), 'license.dat');
 
 // 创建主窗口
 function createMainWindow() {
@@ -26,7 +34,8 @@ function createMainWindow() {
     minHeight: 600,
     frame: false,
     kiosk: true,
-    alwaysOnTop: true,
+    // 移除 alwaysOnTop 以禁用窗口置顶
+    // alwaysOnTop: true,
     skipTaskbar: true,
     autoHideMenuBar: true,
     fullscreen: true,
@@ -42,10 +51,11 @@ function createMainWindow() {
   mainWindow.loadFile('renderer/index.html');
 
   // 窗口锁定强化
-  mainWindow.setAlwaysOnTop(true, 'screen-saver');
   mainWindow.setFullScreen(true);
   mainWindow.setFocusable(true);
   mainWindow.setSkipTaskbar(true);
+  // 移除 alwaysOnTop 设置
+  // mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
   // 防最小化 / 失焦 / 退出等定时检查
   if (!global.windowLockInterval) {
@@ -53,9 +63,9 @@ function createMainWindow() {
       if (!mainWindow) return;
       try {
         if (mainWindow.isMinimized()) mainWindow.restore();
-        if (!mainWindow.isFocused()) { mainWindow.focus(); }
+        // 移除强制聚焦，允许其他窗口获得焦点
+        // if (!mainWindow.isFocused()) { mainWindow.focus(); }
         if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
-        mainWindow.setAlwaysOnTop(true, 'screen-saver');
       } catch (e) {
         // 忽略错误
       }
@@ -68,28 +78,38 @@ function createMainWindow() {
   }
 
   // 窗口聚焦时禁用按键
-  mainWindow.on('focus', () => {
-    if (nativeKeyBlocker) {
-      try {
-        nativeKeyBlocker.disableAll();
-        console.log('窗口聚焦，禁用按键');
-      } catch (err) {
-        console.error('禁用按键失败:', err.message);
-      }
+  // mainWindow.on('focus', () => {
+  //   if (nativeKeyBlocker) {
+  //     try {
+  //       nativeKeyBlocker.disableAll();
+  //       console.log('窗口聚焦，禁用按键');
+  //     } catch (err) {
+  //       console.error('禁用按键失败:', err.message);
+  //     }
+  //   }
+  // });
+  
+  // 应用启动时就禁用按键
+  if (nativeKeyBlocker) {
+    try {
+      nativeKeyBlocker.disableAll();
+      console.log('应用启动，禁用按键');
+    } catch (err) {
+      console.error('禁用按键失败:', err.message);
     }
-  });
+  }
 
-  // 窗口失焦时恢复按键
-  mainWindow.on('blur', () => {
-    if (nativeKeyBlocker) {
-      try {
-        nativeKeyBlocker.enableAll();
-        console.log('窗口失焦，恢复按键');
-      } catch (err) {
-        console.error('恢复按键失败:', err.message);
-      }
-    }
-  });
+  // // 窗口失焦时恢复按键
+  // mainWindow.on('blur', () => {
+  //   if (nativeKeyBlocker) {
+  //     try {
+  //       nativeKeyBlocker.enableAll();
+  //       console.log('窗口失焦，恢复按键');
+  //     } catch (err) {
+  //       console.error('恢复按键失败:', err.message);
+  //     }
+  //   }
+  // });
 
   // 监听窗口关闭事件
   mainWindow.on('closed', () => {
@@ -119,6 +139,104 @@ function createMainWindow() {
   });
 }
 
+// 创建激活窗口
+function createActivationWindow() {
+  if (activationWindow) {
+    activationWindow.focus();
+    return;
+  }
+
+  activationWindow = new BrowserWindow({
+    width: 650,
+    height: 700,
+    minWidth: 600,
+    minHeight: 650,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    },
+    title: '软件激活',
+    modal: true,
+    center: true
+  });
+
+  activationWindow.loadFile('renderer/activation/index.html');
+
+  // 开发模式下打开开发者工具
+  if (process.env.NODE_ENV === 'development') {
+    activationWindow.webContents.openDevTools();
+  }
+
+  activationWindow.on('closed', () => {
+    activationWindow = null;
+  });
+}
+
+// 检查许可证
+async function checkLicenseOnStartup() {
+  try {
+    const machineId = await getMachineId();
+    
+    // 检查许可证文件是否存在
+    if (!fs.existsSync(licenseFile)) {
+      console.log('许可证文件不存在，需要激活');
+      return false;
+    }
+    
+    // 读取许可证
+    const license = fs.readFileSync(licenseFile, 'utf8').trim();
+    
+    // 验证许可证
+    const result = verifyLicense(machineId, license);
+    
+    if (result.valid) {
+      console.log('许可证验证成功:', result.message);
+      console.log('过期日期:', result.expiryDate);
+      console.log('剩余天数:', result.remainingDays);
+      
+      // 如果剩余天数少于30天，显示警告
+      if (result.remainingDays < 30) {
+        setTimeout(() => {
+          if (mainWindow) {
+            dialog.showMessageBox(mainWindow, {
+              type: 'warning',
+              title: '许可证即将过期',
+              message: `您的许可证将在 ${result.remainingDays} 天后过期`,
+              detail: `过期日期: ${result.expiryDate}\n\n请及时联系供应商续期。`,
+              buttons: ['我知道了']
+            });
+          }
+        }, 3000);
+      }
+      
+      return true;
+    } else {
+      console.log('许可证验证失败:', result.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('许可证检查失败:', error);
+    return false;
+  }
+}
+
+// 保存许可证
+function saveLicense(license) {
+  try {
+    const dir = path.dirname(licenseFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(licenseFile, license, 'utf8');
+    return true;
+  } catch (error) {
+    console.error('保存许可证失败:', error);
+    return false;
+  }
+}
+
 // 创建设置窗口
 function createSettingsWindow() {
   if (settingsWindow) {
@@ -140,6 +258,18 @@ function createSettingsWindow() {
 
   // 加载设置界面
   settingsWindow.loadFile('renderer/settings/index.html');
+  
+  // 设置窗口创建后继续保持按键禁用
+  settingsWindow.on('ready-to-show', () => {
+    if (nativeKeyBlocker) {
+      try {
+        nativeKeyBlocker.disableAll();
+        console.log('🔒 设置窗口创建，继续保持按键禁用');
+      } catch (err) {
+        console.error('❌ 禁用按键失败:', err.message);
+      }
+    }
+  });
 
   // 监听窗口关闭事件
   settingsWindow.on('closed', () => {
@@ -173,8 +303,17 @@ async function getSystemInfo() {
 }
 
 // 应用准备就绪时创建窗口
-app.whenReady().then(() => {
-  createMainWindow();
+app.whenReady().then(async () => {
+  // 检查许可证
+  const isLicenseValid = await checkLicenseOnStartup();
+  
+  if (!isLicenseValid) {
+    // 许可证无效，显示激活窗口
+    createActivationWindow();
+  } else {
+    // 许可证有效，创建主窗口
+    createMainWindow();
+  }
 
   // 启动 Windows 热键拦截（仅在 win32）
   try {
@@ -268,6 +407,135 @@ function registerIPCHandlers() {
   ipcMain.handle('open-settings-window', () => {
     createSettingsWindow();
   });
+
+  // 许可证管理相关IPC处理
+  ipcMain.handle('get-machine-id', async () => {
+    try {
+      return await getMachineId();
+    } catch (error) {
+      throw new Error('获取机器指纹失败: ' + error.message);
+    }
+  });
+
+  ipcMain.handle('activate-license', async (event, license) => {
+    try {
+      const machineId = await getMachineId();
+      const result = verifyLicense(machineId, license);
+      
+      if (result.valid) {
+        // 保存许可证
+        if (saveLicense(license)) {
+          // 关闭激活窗口，创建主窗口
+          if (activationWindow) {
+            activationWindow.close();
+          }
+          if (!mainWindow) {
+            createMainWindow();
+          }
+          return {
+            success: true,
+            status: result
+          };
+        } else {
+          return {
+            success: false,
+            message: '保存许可证失败'
+          };
+        }
+      } else {
+        return {
+          success: false,
+          message: result.message
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
+  });
+
+  ipcMain.handle('check-license', async () => {
+    try {
+      const machineId = await getMachineId();
+      
+      if (!fs.existsSync(licenseFile)) {
+        return {
+          valid: false,
+          message: '未激活'
+        };
+      }
+      
+      const license = fs.readFileSync(licenseFile, 'utf8').trim();
+      return verifyLicense(machineId, license);
+    } catch (error) {
+      return {
+        valid: false,
+        message: '检查失败: ' + error.message
+      };
+    }
+  });
+
+  ipcMain.on('close-activation-window', () => {
+    if (activationWindow) {
+      activationWindow.close();
+    }
+  });
+  
+  // 启动本地应用
+  ipcMain.handle('launch-local-app', (event, appPath) => {
+    return new Promise((resolve) => {
+      try {
+        // 检查文件是否存在
+        if (!fs.existsSync(appPath)) {
+          resolve({
+            success: false,
+            error: '应用文件不存在'
+          });
+          return;
+        }
+        
+        // 根据不同平台启动应用
+        let childProcess;
+        const platform = process.platform;
+        
+        if (platform === 'win32') {
+          // Windows: 使用 spawn 启动 .exe 文件
+          childProcess = spawn(appPath, [], { 
+            detached: true, 
+            stdio: 'ignore' 
+          });
+        } else if (platform === 'darwin') {
+          // macOS: 使用 open 命令启动 .app 文件
+          childProcess = spawn('open', [appPath], { 
+            detached: true, 
+            stdio: 'ignore' 
+          });
+        } else {
+          // Linux: 直接执行文件
+          childProcess = spawn(appPath, [], { 
+            detached: true, 
+            stdio: 'ignore' 
+          });
+        }
+        
+        // 不等待子进程退出，直接返回成功
+        childProcess.unref();
+        
+        resolve({
+          success: true,
+          pid: childProcess.pid
+        });
+      } catch (error) {
+        console.error('启动本地应用失败:', error);
+        resolve({
+          success: false,
+          error: error.message
+        });
+      }
+    });
+  });
 }
 
 // 注册全局快捷键
@@ -333,6 +601,16 @@ app.on('will-quit', () => {
   
   // 停止热键拦截
   try { 
-    hotkeyBlocker.stop && hotkeyBlocker.stop(); 
-  } catch {}
+    if (hotkeyBlocker && hotkeyBlocker.stop) {
+      hotkeyBlocker.stop(); 
+    }
+  } catch (e) {
+    console.warn('停止热键拦截时出错:', e.message);
+  }
+  
+  // 清除窗口锁定定时器
+  if (global.windowLockInterval) {
+    clearInterval(global.windowLockInterval);
+    global.windowLockInterval = null;
+  }
 });

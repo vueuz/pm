@@ -132,7 +132,7 @@
       "id": "local-app",
       "name": "计算器",
       "type": "local",
-      "path": "/Applications/Calculator.app",
+      "path": "/Applications/Arc.app",
       "icon": "icons8-calculator-100.png",
       "visible": true
     }

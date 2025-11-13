@@ -374,3 +374,98 @@ textarea.form-control {
         flex-direction: row;
     }
 }
+
+/* 许可证状态样式 */
+.license-status {
+    display: flex;
+    align-items: center;
+    min-height: 30px;
+}
+
+.status-loading {
+    color: #666;
+    font-style: italic;
+}
+
+.status-valid {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.status-invalid {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.status-error {
+    color: #dc3545;
+    font-style: italic;
+}
+
+.license-details-content {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+}
+
+.detail-row:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    font-weight: 500;
+}
+
+.detail-value {
+    font-weight: 500;
+}
+
+.detail-value.warning {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
+.setting-info {
+    flex: 1;
+}
+
+.setting-info label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.setting-description {
+    font-size: 13px;
+    color: #666;
+}
+
+.setting-group {
+    margin-bottom: 30px;
+}
+
+.setting-group h4 {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    color: #333;
+}

@@ -893,6 +893,13 @@ class SettingsManager {
         this.renderAppList();
         this.bindEvents();
         this.populateForm();
+        
+        // 检查许可证状态
+        try {
+            await this.checkLicenseStatus();
+        } catch (error) {
+            console.error('检查许可证状态失败:', error);
+        }
     }
 
     // 渲染应用列表
@@ -982,6 +989,11 @@ class SettingsManager {
             }
             // 重置input值以便下次选择相同文件也能触发change事件
             e.target.value = '';
+        });
+        
+        // 许可证激活按钮
+        document.getElementById('activate-license-btn')?.addEventListener('click', () => {
+            this.activateLicense();
         });
     }
 
@@ -1367,6 +1379,73 @@ class SettingsManager {
         } catch (error) {
             console.error('导入配置失败:', error);
             alert('导入配置失败: ' + error.message);
+        }
+    }
+    
+    // 检查许可证状态
+    async checkLicenseStatus() {
+        try {
+            // 检查electronAPI是否存在
+            if (typeof electronAPI === 'undefined' || !electronAPI.checkLicense) {
+                console.warn('electronAPI不可用，跳过许可证检查');
+                return;
+            }
+            
+            const licenseStatus = document.getElementById('license-status');
+            const licenseDetails = document.getElementById('license-details');
+            const licenseExpiry = document.getElementById('license-expiry');
+            const licenseDays = document.getElementById('license-days');
+            
+            // 如果元素不存在，直接返回
+            if (!licenseStatus) return;
+            
+            // 显示加载状态
+            licenseStatus.innerHTML = '<span class="status-loading">检查中...</span>';
+            
+            // 检查许可证
+            const status = await electronAPI.checkLicense();
+            
+            if (status.valid) {
+                licenseStatus.innerHTML = '<span class="status-valid">✓ 已激活</span>';
+                if (licenseExpiry) licenseExpiry.textContent = status.expiryDate;
+                if (licenseDays) {
+                    licenseDays.textContent = status.remainingDays + ' 天';
+                    // 如果剩余天数少于30天，显示警告
+                    if (status.remainingDays < 30) {
+                        licenseDays.className = 'detail-value warning';
+                    } else {
+                        licenseDays.className = 'detail-value';
+                    }
+                }
+                if (licenseDetails) licenseDetails.style.display = 'block';
+            } else {
+                licenseStatus.innerHTML = '<span class="status-invalid">✗ 未激活</span>';
+                if (licenseDetails) licenseDetails.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('检查许可证状态失败:', error);
+            const licenseStatus = document.getElementById('license-status');
+            if (licenseStatus) {
+                licenseStatus.innerHTML = '<span class="status-error">检查失败</span>';
+            }
+        }
+    }
+    
+    // 激活许可证
+    async activateLicense() {
+        try {
+            // 检查electronAPI是否存在
+            if (typeof electronAPI === 'undefined' || !electronAPI.openActivationWindow) {
+                alert('许可证激活功能不可用');
+                return;
+            }
+            
+            // 打开激活窗口
+            // 这里可以打开激活窗口或者显示激活对话框
+            alert('请在主应用中进行许可证激活操作');
+        } catch (error) {
+            console.error('激活许可证失败:', error);
+            alert('激活许可证失败: ' + error.message);
         }
     }
 }

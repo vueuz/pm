@@ -59,5 +59,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // 启动本地应用
-  launchLocalApp: (appPath) => ipcRenderer.invoke('launch-local-app', appPath)
+  launchLocalApp: (appPath) => ipcRenderer.invoke('launch-local-app', appPath),
+  
+  // 许可证管理
+  getMachineId: () => ipcRenderer.invoke('get-machine-id'),
+  activateLicense: (license) => ipcRenderer.invoke('activate-license', license),
+  checkLicense: () => ipcRenderer.invoke('check-license'),
+  closeActivationWindow: () => ipcRenderer.send('close-activation-window')
 });

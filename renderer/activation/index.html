@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>软件激活</title>
+  <link rel="stylesheet" href="activation.css">
+</head>
+<body>
+  <div class="activation-container">
+    <div class="activation-box">
+      <div class="header">
+        <h1>软件激活</h1>
+        <p class="subtitle">请输入您的授权码以激活软件</p>
+      </div>
+
+      <div class="content">
+        <!-- 机器指纹显示 -->
+        <div class="section">
+          <div class="section-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12" y2="18"></line>
+            </svg>
+            <span>机器指纹</span>
+          </div>
+          <div class="fingerprint-box">
+            <input type="text" id="machineId" readonly class="fingerprint-input">
+            <button id="copyBtn" class="btn-copy" title="复制机器指纹">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+          <p class="hint">请将此机器指纹提供给软件供应商以获取授权码</p>
+        </div>
+
+        <!-- 授权码输入 -->
+        <div class="section">
+          <div class="section-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>授权码</span>
+          </div>
+          <textarea 
+            id="licenseInput" 
+            class="license-input" 
+            placeholder="请输入授权码（支持带破折号的格式）"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <!-- 许可证状态显示 -->
+        <div class="section" id="statusSection" style="display: none;">
+          <div class="section-title">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>许可证状态</span>
+          </div>
+          <div id="statusContent" class="status-content"></div>
+        </div>
+
+        <!-- 消息提示 -->
+        <div id="message" class="message"></div>
+
+        <!-- 操作按钮 -->
+        <div class="actions">
+          <button id="activateBtn" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>激活</span>
+          </button>
+          <button id="checkBtn" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12" y2="8"></line>
+            </svg>
+            <span>检查状态</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p>遇到问题？请联系技术支持</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="activation.js"></script>
+</body>
+</html>
