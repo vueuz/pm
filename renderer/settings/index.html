@@ -228,6 +228,50 @@
                         <input type="range" id="icon-size" class="form-range" min="50" max="200" step="5">
                         <span id="icon-size-value" class="range-value">100</span>
                     </div>
+
+                    <h3 style="margin-top: 30px;">悬停底部发光</h3>
+                    <div class="form-group">
+                        <label class="radio-group">
+                            <span class="label-text">启用发光效果</span>
+                            <label class="radio-option">
+                                <input type="radio" name="glow-enabled" value="true">
+                                <span class="radio-label">是</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="glow-enabled" value="false">
+                                <span class="radio-label">否</span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-color">发光颜色</label>
+                        <input type="color" id="glow-color" class="form-control" value="#3b82f6">
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-opacity">发光不透明度 (%)</label>
+                        <input type="range" id="glow-opacity" class="form-range" min="0" max="100" step="5">
+                        <span id="glow-opacity-value" class="range-value">90</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-blur">发光模糊 (px)</label>
+                        <input type="range" id="glow-blur" class="form-range" min="0" max="40" step="2">
+                        <span id="glow-blur-value" class="range-value">12</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-height">发光厚度 (px)</label>
+                        <input type="range" id="glow-height" class="form-range" min="0" max="40" step="2">
+                        <span id="glow-height-value" class="range-value">10</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-spread">发光扩散 (px)</label>
+                        <input type="range" id="glow-spread" class="form-range" min="0" max="100" step="5">
+                        <span id="glow-spread-value" class="range-value">40</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="glow-fadein-ms">发光淡入时长 (ms)</label>
+                        <input type="range" id="glow-fadein-ms" class="form-range" min="0" max="2000" step="50">
+                        <span id="glow-fadein-ms-value" class="range-value">500</span>
+                    </div>
                     
                     <h3 style="margin-top: 30px;">间距设置</h3>
                     <div class="form-group">

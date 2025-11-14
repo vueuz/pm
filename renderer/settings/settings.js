@@ -56,6 +56,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         containerPaddingHorizontalValue: document.getElementById('container-padding-horizontal-value'),
         iconGap: document.getElementById('icon-gap'),
         iconGapValue: document.getElementById('icon-gap-value'),
+        glowColor: document.getElementById('glow-color'),
+        glowOpacity: document.getElementById('glow-opacity'),
+        glowOpacityValue: document.getElementById('glow-opacity-value'),
+        glowBlur: document.getElementById('glow-blur'),
+        glowBlurValue: document.getElementById('glow-blur-value'),
+        glowHeight: document.getElementById('glow-height'),
+        glowHeightValue: document.getElementById('glow-height-value'),
+        glowSpread: document.getElementById('glow-spread'),
+        glowSpreadValue: document.getElementById('glow-spread-value'),
+        glowFadeInMs: document.getElementById('glow-fadein-ms'),
+        glowFadeInMsValue: document.getElementById('glow-fadein-ms-value'),
         dockBgColor: document.getElementById('dock-bg-color'),
         dockBgOpacity: document.getElementById('dock-bg-opacity'),
         dockBgOpacityValue: document.getElementById('dock-bg-opacity-value'),
@@ -239,6 +250,38 @@ function populateForm() {
     if (elements.enableAnimation) elements.enableAnimation.checked = currentConfig.icon.enableAnimation || true;
     if (elements.iconSize) elements.iconSize.value = currentConfig.icon.size || 100;
     if (elements.iconSizeValue) elements.iconSizeValue.textContent = currentConfig.icon.size || 100;
+
+    if (!currentConfig.icon.glow) {
+        currentConfig.icon.glow = {
+            enabled: true,
+            color: '#3b82f6',
+            opacity: 0.9,
+            blur: 12,
+            height: 10,
+            spread: 40,
+            fadeInMs: 500
+        };
+    }
+    const glowEnabledYes = document.querySelector('input[name="glow-enabled"][value="true"]');
+    const glowEnabledNo = document.querySelector('input[name="glow-enabled"][value="false"]');
+    if (glowEnabledYes && glowEnabledNo) {
+        if (currentConfig.icon.glow.enabled !== false) {
+            glowEnabledYes.checked = true;
+        } else {
+            glowEnabledNo.checked = true;
+        }
+    }
+    if (elements.glowColor) elements.glowColor.value = currentConfig.icon.glow.color || '#3b82f6';
+    if (elements.glowOpacity) elements.glowOpacity.value = Math.round((currentConfig.icon.glow.opacity || 0.9) * 100);
+    if (elements.glowOpacityValue) elements.glowOpacityValue.textContent = Math.round((currentConfig.icon.glow.opacity || 0.9) * 100);
+    if (elements.glowBlur) elements.glowBlur.value = currentConfig.icon.glow.blur || 12;
+    if (elements.glowBlurValue) elements.glowBlurValue.textContent = currentConfig.icon.glow.blur || 12;
+    if (elements.glowHeight) elements.glowHeight.value = currentConfig.icon.glow.height || 10;
+    if (elements.glowHeightValue) elements.glowHeightValue.textContent = currentConfig.icon.glow.height || 10;
+    if (elements.glowSpread) elements.glowSpread.value = currentConfig.icon.glow.spread || 40;
+    if (elements.glowSpreadValue) elements.glowSpreadValue.textContent = currentConfig.icon.glow.spread || 40;
+    if (elements.glowFadeInMs) elements.glowFadeInMs.value = currentConfig.icon.glow.fadeInMs || 500;
+    if (elements.glowFadeInMsValue) elements.glowFadeInMsValue.textContent = currentConfig.icon.glow.fadeInMs || 500;
     
     // 间距设置
     if (!currentConfig.spacing) {
@@ -432,6 +475,52 @@ function setupRealTimeConfigUpdate() {
             updateConfigAndApply();
         });
     }
+
+    const glowEnabledRadios = document.querySelectorAll('input[name="glow-enabled"]');
+    glowEnabledRadios.forEach(radio => {
+        radio.addEventListener('change', updateConfigAndApply);
+    });
+    if (elements.glowColor) elements.glowColor.addEventListener('change', updateConfigAndApply);
+    if (elements.glowOpacity) {
+        elements.glowOpacity.addEventListener('input', () => {
+            if (elements.glowOpacityValue) {
+                elements.glowOpacityValue.textContent = elements.glowOpacity.value;
+            }
+            updateConfigAndApply();
+        });
+    }
+    if (elements.glowBlur) {
+        elements.glowBlur.addEventListener('input', () => {
+            if (elements.glowBlurValue) {
+                elements.glowBlurValue.textContent = elements.glowBlur.value;
+            }
+            updateConfigAndApply();
+        });
+    }
+    if (elements.glowHeight) {
+        elements.glowHeight.addEventListener('input', () => {
+            if (elements.glowHeightValue) {
+                elements.glowHeightValue.textContent = elements.glowHeight.value;
+            }
+            updateConfigAndApply();
+        });
+    }
+    if (elements.glowSpread) {
+        elements.glowSpread.addEventListener('input', () => {
+            if (elements.glowSpreadValue) {
+                elements.glowSpreadValue.textContent = elements.glowSpread.value;
+            }
+            updateConfigAndApply();
+        });
+    }
+    if (elements.glowFadeInMs) {
+        elements.glowFadeInMs.addEventListener('input', () => {
+            if (elements.glowFadeInMsValue) {
+                elements.glowFadeInMsValue.textContent = elements.glowFadeInMs.value;
+            }
+            updateConfigAndApply();
+        });
+    }
     
     // Dock栏设置实时更新
     if (elements.dockBgColor) elements.dockBgColor.addEventListener('change', updateConfigAndApply);
@@ -539,6 +628,15 @@ function collectFormData() {
     if (elements.showIconShadow) currentConfig.icon.showShadow = elements.showIconShadow.checked;
     if (elements.enableAnimation) currentConfig.icon.enableAnimation = elements.enableAnimation.checked;
     if (elements.iconSize) currentConfig.icon.size = parseInt(elements.iconSize.value);
+    if (!currentConfig.icon.glow) currentConfig.icon.glow = {};
+    const glowEnabledYes = document.querySelector('input[name="glow-enabled"][value="true"]');
+    if (glowEnabledYes) currentConfig.icon.glow.enabled = glowEnabledYes.checked;
+    if (elements.glowColor) currentConfig.icon.glow.color = elements.glowColor.value;
+    if (elements.glowOpacity) currentConfig.icon.glow.opacity = parseInt(elements.glowOpacity.value) / 100;
+    if (elements.glowBlur) currentConfig.icon.glow.blur = parseInt(elements.glowBlur.value);
+    if (elements.glowHeight) currentConfig.icon.glow.height = parseInt(elements.glowHeight.value);
+    if (elements.glowSpread) currentConfig.icon.glow.spread = parseInt(elements.glowSpread.value);
+    if (elements.glowFadeInMs) currentConfig.icon.glow.fadeInMs = parseInt(elements.glowFadeInMs.value);
     
     // 间距设置
     if (!currentConfig.spacing) {
@@ -597,11 +695,7 @@ async function updateConfigAndApply() {
         collectFormData();
         
         // 保存配置
-        const result = await window.electronAPI.saveConfig(currentConfig);
-        if (result) {
-            // 发送消息到主窗口以应用新配置
-            await window.electronAPI.applyConfig(currentConfig);
-        }
+        await window.electronAPI.saveConfig(currentConfig);
     } catch (error) {
         console.error('Failed to update config:', error);
     }
@@ -645,8 +739,7 @@ async function resetConfig() {
                 currentConfig = config;
                 populateForm();
                 renderAppsList();
-                // 应用重置后的配置
-                await window.electronAPI.applyConfig(currentConfig);
+                await window.electronAPI.saveConfig(currentConfig);
                 alert('已恢复默认配置');
             } else {
                 alert('恢复默认配置失败');
@@ -866,8 +959,7 @@ async function importConfig() {
                 currentConfig = importResult;
                 populateForm();
                 renderAppsList();
-                // 应用导入的配置
-                await window.electronAPI.applyConfig(currentConfig);
+                await window.electronAPI.saveConfig(currentConfig);
                 alert('配置导入成功');
             } else {
                 alert('配置导入失败，请检查文件格式是否正确');

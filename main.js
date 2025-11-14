@@ -362,7 +362,13 @@ function registerIPCHandlers() {
   });
 
   ipcMain.handle('save-config', (event, config) => {
-    return configManager.saveConfig(config);
+    const ok = configManager.saveConfig(config);
+    try {
+      if (ok && mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('config-updated', configManager.getConfig());
+      }
+    } catch (_) {}
+    return ok;
   });
 
   ipcMain.handle('reset-config', () => {

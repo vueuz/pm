@@ -227,6 +227,15 @@ function updateBackgroundImage() {
 }
 
 // 更新图标样式
+function hexToRgba(hex, opacity) {
+    const h = hex.replace('#', '');
+    const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 function updateIconStyles() {
     // 移除之前的样式
     let style = document.getElementById('dynamic-icon-styles');
@@ -271,6 +280,27 @@ function updateIconStyles() {
         // 图标名称
         if (iconConfig.hideName) {
             css += `.app-icon span { display: none; }`;
+        }
+
+        const glow = (iconConfig.glow) ? iconConfig.glow : {
+            enabled: true,
+            color: '#370890ff',
+            opacity: 0.24,
+            blur: 14,
+            height: 10,
+            spread: 30
+        };
+        if (glow && glow.enabled) {
+            const rgba = hexToRgba(glow.color || '#ff2414ff', glow.opacity !== undefined ? glow.opacity : 0.65);
+            const spread = glow.spread || 60;
+            const blur = glow.blur !== undefined ? glow.blur : 100;
+            const inner = glow.height !== undefined ? Math.max(15, Math.min(60, glow.height * 2)) : 30;
+            const fadeInMs = glow.fadeInMs !== undefined ? glow.fadeInMs : 500;
+            css += `.app-icon { position: relative; }`;
+            css += `.app-icon .icon-graphic { position: relative; z-index: 1; }`;
+            css += `.app-icon .icon-graphic::before { content: ''; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: calc(100% + ${spread}px); height: calc(100% + ${spread}px); border-radius: 50%; pointer-events: none; background: radial-gradient(circle at center, ${rgba} 0%, ${rgba} ${inner}%, transparent 85%); filter: blur(${blur}px); opacity: 0; z-index: 0; transition: opacity ${fadeInMs}ms ease; }`;
+            css += `@keyframes glowPulse { 0% { opacity: 1; } 100% { opacity: 0.6; } }`;
+            css += `.app-icon:hover .icon-graphic::before { opacity: 1; animation: glowPulse 4s ease-in-out 1s infinite alternate; }`;
         }
     }
     
@@ -386,14 +416,18 @@ function renderAppIcons() {
         
         if (iconPath) {
             appIcon.innerHTML = `
-                <img src="${iconPath}" alt="${app.name}" onerror="this.style.display='none';this.parentElement.querySelector('.default-icon').style.display='flex';">
-                <div class="default-icon" style="display:none;">${initials}</div>
+                <div class="icon-graphic">
+                    <img src="${iconPath}" alt="${app.name}" onerror="this.style.display='none';this.parentElement.querySelector('.default-icon').style.display='flex';">
+                    <div class="default-icon" style="display:none;">${initials}</div>
+                </div>
                 <span>${app.name}</span>
             `;
         } else {
             // 使用文字作为默认图标
             appIcon.innerHTML = `
-                <div class="default-icon">${initials}</div>
+                <div class="icon-graphic">
+                    <div class="default-icon">${initials}</div>
+                </div>
                 <span>${app.name}</span>
             `;
         }

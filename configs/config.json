@@ -170,7 +170,15 @@
     "showShadow": false,
     "enableAnimation": false,
     "showBackground": false,
-    "size": 105
+    "size": 105,
+    "glow": {
+      "enabled": true,
+      "color": "#FF90C0",
+      "opacity": 0.9,
+      "blur": 12,
+      "height": 15,
+      "spread": 20
+    }
   },
   "spacing": {
     "containerPaddingVertical": 200,
