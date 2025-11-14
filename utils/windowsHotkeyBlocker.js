@@ -89,7 +89,7 @@ class WindowsHotkeyBlocker {
       ]);
 
       this.UnhookWindowsHookEx = this.user32.func('UnhookWindowsHookEx', 'bool', ['intptr']);
-      this.CallNextHookEx = this.user32.func('CallNextHookEx', 'intptr', ['intptr', 'int', 'uintptr', 'void*']);
+      this.CallNextHookEx = this.user32.func('CallNextHookEx', 'intptr', ['intptr', 'int', 'uintptr', 'KBDLLHOOKSTRUCT*']);
       this.GetModuleHandleW = this.user32.func('GetModuleHandleW', 'intptr', ['str16']);
       this.GetAsyncKeyState = this.user32.func('GetAsyncKeyState', 'short', ['int']);
       
