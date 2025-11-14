@@ -18,6 +18,10 @@ window.addEventListener('message', (event) => {
     }
 });
 
+if (typeof window.electronAPI === 'undefined' && typeof window.parent !== 'undefined' && window.parent.electronAPI) {
+    window.electronAPI = window.parent.electronAPI;
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Settings page loaded');
@@ -781,21 +785,22 @@ function renderAppsList() {
 
     appsList.innerHTML = '';
     
-    this.config.apps.forEach((app, index) => {
+    if (!currentConfig || !currentConfig.apps) return;
+    currentConfig.apps.forEach((app, index) => {
         const appItem = document.createElement('div');
         appItem.className = 'app-config-item';
         appItem.innerHTML = `
             <div class="app-config-header">
                 <label class="radio-group">
-                    <span class="app-name">${app.name}</span>
-                    <label class="radio-option">
-                        <input type="radio" name="app-visible-${index}" value="true" ${app.visible ? 'checked' : ''}>
-                        <span class="radio-label">显示</span>
-                    </label>
-                    <label class="radio-option">
-                        <input type="radio" name="app-visible-${index}" value="false" ${!app.visible ? 'checked' : ''}>
-                        <span class="radio-label">隐藏</span>
-                    </label>
+                <span class="app-name">${app.name}</span>
+                <label class="radio-option">
+                    <input type="radio" name="app-visible-${index}" value="true" ${app.visible ? 'checked' : ''}>
+                    <span class="radio-label">显示</span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="app-visible-${index}" value="false" ${!app.visible ? 'checked' : ''}>
+                    <span class="radio-label">隐藏</span>
+                </label>
                 </label>
             </div>
             <div class="app-config-fields">
@@ -980,13 +985,11 @@ class SettingsManager {
 
     // 初始化
     async init() {
-        // 获取配置
-        this.config = await electronAPI.getConfig();
+        const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+        this.config = api && api.getConfig ? await api.getConfig() : {};
         this.renderAppList();
         this.bindEvents();
         this.populateForm();
-        
-        // 检查许可证状态
         try {
             await this.checkLicenseStatus();
         } catch (error) {
@@ -1421,7 +1424,10 @@ class SettingsManager {
     // 保存配置
     async saveConfig() {
         try {
-            await electronAPI.saveConfig(this.config);
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (api && api.saveConfig) {
+                await api.saveConfig(this.config);
+            }
         } catch (error) {
             console.error('保存配置失败:', error);
             alert('保存配置失败: ' + error.message);
@@ -1431,10 +1437,13 @@ class SettingsManager {
     // 恢复默认配置
     async resetConfig() {
         try {
-            this.config = await electronAPI.resetConfig();
-            this.renderAppList();
-            this.populateForm();
-            alert('已恢复默认配置');
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (api && api.resetConfig) {
+                this.config = await api.resetConfig();
+                this.renderAppList();
+                this.populateForm();
+                alert('已恢复默认配置');
+            }
         } catch (error) {
             console.error('恢复默认配置失败:', error);
             alert('恢复默认配置失败: ' + error.message);
@@ -1444,12 +1453,10 @@ class SettingsManager {
     // 导出配置
     async exportConfig() {
         try {
-            const success = await electronAPI.exportConfig();
-            if (success) {
-                alert('配置已导出');
-            } else {
-                alert('配置导出失败');
-            }
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (!api || !api.exportConfig) return;
+            const success = await api.exportConfig();
+            alert(success ? '配置已导出' : '配置导出失败');
         } catch (error) {
             console.error('导出配置失败:', error);
             alert('导出配置失败: ' + error.message);
@@ -1459,9 +1466,11 @@ class SettingsManager {
     // 导入配置
     async importConfig(file) {
         try {
-            const success = await electronAPI.importConfig(file.path);
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (!api || !api.importConfig || !api.getConfig) return;
+            const success = await api.importConfig(file.path);
             if (success) {
-                this.config = await electronAPI.getConfig();
+                this.config = await api.getConfig();
                 this.renderAppList();
                 this.populateForm();
                 alert('配置已导入');
@@ -1477,32 +1486,20 @@ class SettingsManager {
     // 检查许可证状态
     async checkLicenseStatus() {
         try {
-            // 检查electronAPI是否存在
-            if (typeof electronAPI === 'undefined' || !electronAPI.checkLicense) {
-                console.warn('electronAPI不可用，跳过许可证检查');
-                return;
-            }
-            
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (!api || !api.checkLicense) return;
             const licenseStatus = document.getElementById('license-status');
             const licenseDetails = document.getElementById('license-details');
             const licenseExpiry = document.getElementById('license-expiry');
             const licenseDays = document.getElementById('license-days');
-            
-            // 如果元素不存在，直接返回
             if (!licenseStatus) return;
-            
-            // 显示加载状态
             licenseStatus.innerHTML = '<span class="status-loading">检查中...</span>';
-            
-            // 检查许可证
-            const status = await electronAPI.checkLicense();
-            
+            const status = await api.checkLicense();
             if (status.valid) {
                 licenseStatus.innerHTML = '<span class="status-valid">✓ 已激活</span>';
                 if (licenseExpiry) licenseExpiry.textContent = status.expiryDate;
                 if (licenseDays) {
                     licenseDays.textContent = status.remainingDays + ' 天';
-                    // 如果剩余天数少于30天，显示警告
                     if (status.remainingDays < 30) {
                         licenseDays.className = 'detail-value warning';
                     } else {
@@ -1526,14 +1523,11 @@ class SettingsManager {
     // 激活许可证
     async activateLicense() {
         try {
-            // 检查electronAPI是否存在
-            if (typeof electronAPI === 'undefined' || !electronAPI.openActivationWindow) {
+            const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
+            if (!api || !api.openActivationWindow) {
                 alert('许可证激活功能不可用');
                 return;
             }
-            
-            // 打开激活窗口
-            // 这里可以打开激活窗口或者显示激活对话框
             alert('请在主应用中进行许可证激活操作');
         } catch (error) {
             console.error('激活许可证失败:', error);

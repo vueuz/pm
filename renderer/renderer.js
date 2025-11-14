@@ -106,7 +106,7 @@ async function loadConfig() {
                 apps: [
                     { id: 'baidu', name: '百度', url: 'https://www.baidu.com', icon: 'baidu.png', visible: true },
                     { id: 'bing', name: '必应', url: 'https://www.bing.com', icon: 'bing.png', visible: true },
-                    { id: 'settings', name: '设置', url: '#', icon: 'settings.png', visible: true }
+                    { id: 'settings', name: '设置', url: 'settings/index.html', icon: 'settings.png', visible: true }
                 ],
                 interface: {
                     showSettingsButton: true,
@@ -512,17 +512,15 @@ async function handleAppIconClick(event) {
     const appId = appIcon.dataset.app;
     
     if (appId === 'settings') {
-        // 打开设置窗口
-        try {
-            if (typeof electronAPI !== 'undefined' && electronAPI.openSettingsWindow) {
-                await electronAPI.openSettingsWindow();
-            } else {
-                alert('设置功能在当前环境中不可用');
-            }
-        } catch (error) {
-            console.error('打开设置窗口失败:', error);
-            alert('打开设置窗口失败: ' + error.message);
-        }
+        const settingsApp = {
+            id: 'settings',
+            name: '设置',
+            url: 'settings/index.html',
+            type: 'web',
+            icon: 'settings.png',
+            visible: true
+        };
+        openAppWindow(settingsApp);
         return;
     }
     
@@ -644,6 +642,13 @@ function openAppWindow(app) {
             iframe.title = app.name;
             // 添加sandbox属性以避免ERR_BLOCKED_BY_RESPONSE错误
             iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation';
+            iframe.addEventListener('load', () => {
+                try {
+                    if (app.id === 'settings' && typeof electronAPI !== 'undefined') {
+                        iframe.contentWindow.electronAPI = electronAPI;
+                    }
+                } catch (e) {}
+            });
             content.appendChild(iframe);
         } else {
             content.innerHTML = `<div style="padding: 20px;">${app.name} 内容区域</div>`;
