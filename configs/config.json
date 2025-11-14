@@ -61,7 +61,7 @@
       "name": "数字实验室",
       "type": "web",
       "url": "https://www.baidu.com",
-      "icon": "icons8-prism-100.png",
+      "icon": "icons8-unit-100.png",
       "visible": true
     },
     {
@@ -77,7 +77,7 @@
       "name": "地质保障系统",
       "type": "web",
       "url": "https://www.baidu.com",
-      "icon": "icons8-pickaxe-100.png",
+      "icon": "icons8-pump-100.png",
       "visible": true
     },
     {
@@ -126,14 +126,6 @@
       "type": "web",
       "url": "#quit",
       "icon": "icons8-change-100.png",
-      "visible": true
-    },
-     {
-      "id": "local-app",
-      "name": "计算器",
-      "type": "local",
-      "path": "/Applications/Arc.app",
-      "icon": "icons8-calculator-100.png",
       "visible": true
     }
   ],
