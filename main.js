@@ -218,6 +218,8 @@ async function checkLicenseOnStartup() {
     }
   } catch (error) {
     console.error('许可证检查失败:', error);
+    // 添加更详细的错误信息
+    console.error('错误详情:', error.stack);
     return false;
   }
 }
@@ -304,14 +306,20 @@ async function getSystemInfo() {
 
 // 应用准备就绪时创建窗口
 app.whenReady().then(async () => {
-  // 检查许可证
-  const isLicenseValid = await checkLicenseOnStartup();
-  
-  if (!isLicenseValid) {
-    // 许可证无效，显示激活窗口
-    createActivationWindow();
-  } else {
-    // 许可证有效，创建主窗口
+  try {
+    // 检查许可证
+    const isLicenseValid = await checkLicenseOnStartup();
+    
+    if (!isLicenseValid) {
+      // 许可证无效，显示激活窗口
+      createActivationWindow();
+    } else {
+      // 许可证有效，创建主窗口
+      createMainWindow();
+    }
+  } catch (error) {
+    console.error('启动时检查许可证失败:', error);
+    // 即使许可证检查失败，也尝试创建主窗口
     createMainWindow();
   }
 

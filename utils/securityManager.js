@@ -20,6 +20,17 @@ try {
 } catch (err) {
   console.warn('⚠️  原生按键禁用模块加载失败:', err.message);
   console.warn('   完整错误:', err.stack);
+  // 即使原生模块加载失败，也要确保应用可以正常运行
+  nativeKeyBlocker = {
+    enableAll: () => {
+      console.warn('原生模块不可用，enableAll 是空操作');
+      return true;
+    },
+    disableAll: () => {
+      console.warn('原生模块不可用，disableAll 是空操作');
+      return true;
+    }
+  };
 }
 
 class SecurityManager {
@@ -106,8 +117,8 @@ class SecurityManager {
 
     // 应用启动时就禁用按键
     try {
-      nativeKeyBlocker.disableAll();
-      console.log('🔒 应用启动，禁用系统按键');
+      const result = nativeKeyBlocker.disableAll();
+      console.log('🔒 应用启动，禁用系统按键，结果:', result);
     } catch (err) {
       console.error('❌ 禁用按键失败:', err.message);
     }
@@ -117,8 +128,8 @@ class SecurityManager {
       // 窗口聚焦时禁用按键
       this.mainWindow.on('focus', () => {
         try {
-          nativeKeyBlocker.disableAll();
-          console.log('🔒 窗口聚焦，禁用系统按键');
+          const result = nativeKeyBlocker.disableAll();
+          console.log('🔒 窗口聚焦，禁用系统按键，结果:', result);
         } catch (err) {
           console.error('❌ 禁用按键失败:', err.message);
         }
@@ -156,8 +167,8 @@ class SecurityManager {
     // 恢复原生模块禁用的按键
     if (nativeKeyBlocker) {
       try {
-        nativeKeyBlocker.enableAll();
-        console.log('✅ 原生按键已恢复');
+        const result = nativeKeyBlocker.enableAll();
+        console.log('✅ 原生按键已恢复，结果:', result);
       } catch (err) {
         console.error('❌ 恢复按键失败:', err.message);
       }

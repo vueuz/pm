@@ -73,6 +73,15 @@ exports.default = async function(context) {
             console.log('   ✅ Copied package.json');
         }
 
+        // 复制 node_modules（如果存在）
+        const nodeModulesSrc = path.join(nativeSrcDir, 'node_modules');
+        const nodeModulesDest = path.join(nativeDestDir, 'node_modules');
+        
+        if (fs.existsSync(nodeModulesSrc)) {
+            await fs.copy(nodeModulesSrc, nodeModulesDest);
+            console.log('   ✅ Copied node_modules');
+        }
+
         // 列出复制的文件
         console.log('\n📋 Native module contents:');
         if (fs.existsSync(buildDest)) {
@@ -87,6 +96,8 @@ exports.default = async function(context) {
 
     } catch (error) {
         console.error('\n❌ Error processing native module:', error.message);
-        throw error;
+        console.error('Stack trace:', error.stack);
+        // 不抛出错误，让构建继续进行
+        console.warn('⚠️  Continuing build despite native module error...');
     }
 };

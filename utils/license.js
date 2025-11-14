@@ -51,11 +51,35 @@ function generateLicense(machineId, expiryDate, secretKey = DEFAULT_SECRET_KEY) 
  */
 function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
   try {
+    // 检查输入参数
+    if (!machineId || !license) {
+      return {
+        valid: false,
+        message: '机器指纹或授权码为空'
+      };
+    }
+    
     // 移除格式化的破折号
     const cleanLicense = license.replace(/-/g, '');
     
+    // 检查许可证格式
+    if (!cleanLicense) {
+      return {
+        valid: false,
+        message: '授权码格式错误'
+      };
+    }
+    
     // Base64 解码
-    const decodedLicense = Buffer.from(cleanLicense, 'base64').toString('utf-8');
+    let decodedLicense;
+    try {
+      decodedLicense = Buffer.from(cleanLicense, 'base64').toString('utf-8');
+    } catch (decodeError) {
+      return {
+        valid: false,
+        message: '授权码解码失败'
+      };
+    }
     
     // 解析授权码
     const parts = decodedLicense.split('-');
@@ -67,6 +91,15 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
     }
     
     const [machineIdPrefix, expiryTimestamp, signature] = parts;
+    
+    // 验证时间戳是否为有效数字
+    const timestamp = parseInt(expiryTimestamp);
+    if (isNaN(timestamp)) {
+      return {
+        valid: false,
+        message: '授权码时间戳无效'
+      };
+    }
     
     // 验证机器指纹前缀
     if (!machineId.startsWith(machineIdPrefix)) {
@@ -93,6 +126,14 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
     const expiryDate = new Date(parseInt(expiryTimestamp));
     const now = new Date();
     
+    // 检查日期是否有效
+    if (isNaN(expiryDate.getTime())) {
+      return {
+        valid: false,
+        message: '授权码日期无效'
+      };
+    }
+    
     if (now > expiryDate) {
       return {
         valid: false,
@@ -110,9 +151,10 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
     };
     
   } catch (error) {
+    console.error('许可证验证过程中发生错误:', error);
     return {
       valid: false,
-      message: '授权码解析失败: ' + error.message
+      message: '授权码验证过程出错: ' + error.message
     };
   }
 }
