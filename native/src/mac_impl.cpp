@@ -46,10 +46,11 @@ CGEventRef EventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
             return NULL;
         }
 
-        if (g_isCtrlKeyDisabled && (flags & kCGEventFlagMaskControl))
-        {
-            return NULL;
-        }
+        // 移除对Ctrl键的拦截
+        // if (g_isCtrlKeyDisabled && (flags & kCGEventFlagMaskControl))
+        // {
+        //     return NULL;
+        // }
 
         // F3键的全面拦截处理
         if (g_isF3KeyDisabled)
@@ -170,7 +171,8 @@ void EnsureHookThreadRunning(Napi::Env env)
 
 void StopHookThreadIfNeeded()
 {
-    if (g_runLoop && !g_isWinKeyDisabled && !g_isAltTabDisabled && !g_isAltKeyDisabled && !g_isF11KeyDisabled && !g_isCtrlKeyDisabled && !g_isF3KeyDisabled && !g_isFnKeyDisabled && !g_isFunctionKeysDisabled)
+    // 更新条件判断，移除对 g_isCtrlKeyDisabled 的检查
+    if (g_runLoop && !g_isWinKeyDisabled && !g_isAltTabDisabled && !g_isAltKeyDisabled && !g_isF11KeyDisabled && !g_isF3KeyDisabled && !g_isFnKeyDisabled && !g_isFunctionKeysDisabled)
     {
         CFRunLoopStop(g_runLoop);
         pthread_join(g_thread, NULL);

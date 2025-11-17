@@ -23,9 +23,10 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
         if (g_isF11KeyDisabled && p->vkCode == VK_F11) {
             return 1;
         }
-        if (g_isCtrlKeyDisabled && (p->vkCode == VK_LCONTROL || p->vkCode == VK_RCONTROL)) {
-            return 1;
-        }
+        // 移除对Ctrl键的拦截
+        // if (g_isCtrlKeyDisabled && (p->vkCode == VK_LCONTROL || p->vkCode == VK_RCONTROL)) {
+        //     return 1;
+        // }
         if (g_isF3KeyDisabled && p->vkCode == VK_F3) {
             return 1;
         }
@@ -96,7 +97,8 @@ void EnsureHookThreadRunning(Napi::Env env) {
 }
 
 void StopHookThreadIfNeeded() {
-    if (g_hThread != NULL && !g_isWinKeyDisabled && !g_isAltTabDisabled && !g_isAltKeyDisabled && !g_isF11KeyDisabled && !g_isCtrlKeyDisabled && !g_isF3KeyDisabled && !g_isFnKeyDisabled && !g_isFunctionKeysDisabled) {
+    // 更新条件判断，移除对 g_isCtrlKeyDisabled 的检查
+    if (g_hThread != NULL && !g_isWinKeyDisabled && !g_isAltTabDisabled && !g_isAltKeyDisabled && !g_isF11KeyDisabled && !g_isF3KeyDisabled && !g_isFnKeyDisabled && !g_isFunctionKeysDisabled) {
         PostThreadMessage(g_dwThreadId, WM_QUIT, 0, 0);
         WaitForSingleObject(g_hThread, 1000);
         CloseHandle(g_hThread);

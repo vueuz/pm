@@ -24,6 +24,7 @@ class WindowsHotkeyBlocker {
       blockWinTab: true,
       blockCtrlEsc: true,
       blockAltEsc: true,
+      // 移除 blockCtrlKey 配置项
       ...config
     };
 

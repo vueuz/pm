@@ -5,7 +5,7 @@ bool g_isWinKeyDisabled = true;
 bool g_isAltTabDisabled = true;
 bool g_isAltKeyDisabled = true;
 bool g_isF11KeyDisabled = true;
-bool g_isCtrlKeyDisabled = true;
+// 移除 g_isCtrlKeyDisabled 的初始化
 bool g_isF3KeyDisabled = true;
 bool g_isFnKeyDisabled = true;
 bool g_isFunctionKeysDisabled = true; // 禁用所有F1到F12功能键
@@ -17,7 +17,7 @@ Napi::Value disableAll(const Napi::CallbackInfo& info) {
     g_isAltTabDisabled = true;
     g_isAltKeyDisabled = true;
     g_isF3KeyDisabled = true;
-    g_isCtrlKeyDisabled = true;
+    // 移除 g_isCtrlKeyDisabled 的设置
     g_isF11KeyDisabled = true;
     g_isFnKeyDisabled = true;
     g_isFunctionKeysDisabled = true;
@@ -33,7 +33,7 @@ Napi::Value enableAll(const Napi::CallbackInfo& info) {
     g_isAltTabDisabled = false;
     g_isAltKeyDisabled = false;
     g_isF3KeyDisabled = false;
-    g_isCtrlKeyDisabled = false;
+    // 移除 g_isCtrlKeyDisabled 的设置
     g_isF11KeyDisabled = false;
     g_isFnKeyDisabled = false;
     g_isFunctionKeysDisabled = false;
