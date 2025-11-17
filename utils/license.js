@@ -1,16 +1,31 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
-// 默认密钥（实际使用时应该使用环境变量或配置文件）
-const DEFAULT_SECRET_KEY = 'PM-LICENSE-2025-SECRET-KEY-NANTIAN';
+function loadPublicKey(provided) {
+  if (provided) return provided;
+  if (process.env.PM_LICENSE_PUBLIC_KEY) return process.env.PM_LICENSE_PUBLIC_KEY;
+  const p = path.join(__dirname, '..', 'keys', 'public.pem');
+  if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
+  return null;
+}
+
+function loadPrivateKey(provided) {
+  if (provided) return provided;
+  if (process.env.PM_LICENSE_PRIVATE_KEY) return process.env.PM_LICENSE_PRIVATE_KEY;
+  const p = path.join(__dirname, '..', 'keys', 'private.pem');
+  if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
+  return null;
+}
 
 /**
  * 生成授权码
  * @param {string} machineId 机器指纹
  * @param {string} expiryDate 过期时间 (YYYY-MM-DD)
- * @param {string} secretKey 自定义密钥（可选）
+ * @param {string} privateKey 私钥（可选）
  * @returns {string} 授权码
  */
-function generateLicense(machineId, expiryDate, secretKey = DEFAULT_SECRET_KEY) {
+function generateLicense(machineId, expiryDate, privateKey) {
   if (!machineId || !expiryDate) {
     throw new Error('机器指纹和过期时间不能为空');
   }
@@ -21,24 +36,21 @@ function generateLicense(machineId, expiryDate, secretKey = DEFAULT_SECRET_KEY) 
     throw new Error('过期时间格式错误，应为 YYYY-MM-DD');
   }
 
-  // 将过期时间转换为时间戳
   const expiryTimestamp = new Date(expiryDate).getTime();
   
-  // 组合数据
   const data = `${machineId}|${expiryTimestamp}`;
+  const pk = loadPrivateKey(privateKey);
+  if (!pk) {
+    throw new Error('缺少私钥');
+  }
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(data);
+  const signature = signer.sign(pk, 'base64');
   
-  // 使用 HMAC-SHA256 生成签名
-  const hmac = crypto.createHmac('sha256', secretKey);
-  hmac.update(data);
-  const signature = hmac.digest('hex');
+  const licenseCode = `${machineId.substring(0, 8)}-${expiryTimestamp}-${signature}`;
   
-  // 组合授权码：机器指纹前8位-过期时间戳-签名前16位
-  const licenseCode = `${machineId.substring(0, 8)}-${expiryTimestamp}-${signature.substring(0, 16)}`;
-  
-  // Base64 编码
   const encodedLicense = Buffer.from(licenseCode).toString('base64');
   
-  // 格式化为易读格式（每4个字符一组）
   return formatLicense(encodedLicense);
 }
 
@@ -46,10 +58,10 @@ function generateLicense(machineId, expiryDate, secretKey = DEFAULT_SECRET_KEY) 
  * 验证授权码
  * @param {string} machineId 当前机器指纹
  * @param {string} license 授权码
- * @param {string} secretKey 自定义密钥（可选）
+ * @param {string} publicKey 公钥（可选）
  * @returns {object} 验证结果
  */
-function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
+function verifyLicense(machineId, license, publicKey) {
   try {
     // 检查输入参数
     if (!machineId || !license) {
@@ -59,7 +71,6 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
       };
     }
     
-    // 移除格式化的破折号
     const cleanLicense = license.replace(/-/g, '');
     
     // 检查许可证格式
@@ -70,7 +81,6 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
       };
     }
     
-    // Base64 解码
     let decodedLicense;
     try {
       decodedLicense = Buffer.from(cleanLicense, 'base64').toString('utf-8');
@@ -81,7 +91,6 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
       };
     }
     
-    // 解析授权码
     const parts = decodedLicense.split('-');
     if (parts.length !== 3) {
       return {
@@ -92,7 +101,6 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
     
     const [machineIdPrefix, expiryTimestamp, signature] = parts;
     
-    // 验证时间戳是否为有效数字
     const timestamp = parseInt(expiryTimestamp);
     if (isNaN(timestamp)) {
       return {
@@ -101,7 +109,6 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
       };
     }
     
-    // 验证机器指纹前缀
     if (!machineId.startsWith(machineIdPrefix)) {
       return {
         valid: false,
@@ -109,24 +116,27 @@ function verifyLicense(machineId, license, secretKey = DEFAULT_SECRET_KEY) {
       };
     }
     
-    // 验证签名
     const data = `${machineId}|${expiryTimestamp}`;
-    const hmac = crypto.createHmac('sha256', secretKey);
-    hmac.update(data);
-    const expectedSignature = hmac.digest('hex').substring(0, 16);
-    
-    if (signature !== expectedSignature) {
+    const pub = loadPublicKey(publicKey);
+    if (!pub) {
+      return {
+        valid: false,
+        message: '缺少公钥'
+      };
+    }
+    const verifier = crypto.createVerify('RSA-SHA256');
+    verifier.update(data);
+    const ok = verifier.verify(pub, signature, 'base64');
+    if (!ok) {
       return {
         valid: false,
         message: '授权码签名验证失败'
       };
     }
     
-    // 验证过期时间
     const expiryDate = new Date(parseInt(expiryTimestamp));
     const now = new Date();
     
-    // 检查日期是否有效
     if (isNaN(expiryDate.getTime())) {
       return {
         valid: false,

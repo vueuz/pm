@@ -7,6 +7,7 @@
 
 const { getMachineId, isValidMachineId } = require('../utils/fingerprint');
 const { generateLicense, verifyLicense } = require('../utils/license');
+const { generateKeyPairSync } = require('crypto');
 
 async function testLicenseSystem() {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -26,14 +27,19 @@ async function testLicenseSystem() {
     expiryDate.setFullYear(expiryDate.getFullYear() + 1);
     const expiryDateStr = expiryDate.toISOString().split('T')[0];
     
-    const license = generateLicense(machineId, expiryDateStr);
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs1', format: 'pem' }
+    });
+    const license = generateLicense(machineId, expiryDateStr, privateKey);
     console.log(`   ✅ 过期日期: ${expiryDateStr}`);
     console.log(`   ✅ 授权码长度: ${license.length} 字符`);
     console.log(`   ✅ 授权码: ${license}\n`);
 
     // 3. 测试许可证验证 - 有效许可证
     console.log('3️⃣  测试许可证验证 (有效许可证)...');
-    const validResult = verifyLicense(machineId, license);
+    const validResult = verifyLicense(machineId, license, publicKey);
     console.log(`   ✅ 验证结果: ${validResult.valid ? '有效' : '无效'}`);
     console.log(`   ✅ 消息: ${validResult.message}`);
     console.log(`   ✅ 过期日期: ${validResult.expiryDate}`);
@@ -42,15 +48,15 @@ async function testLicenseSystem() {
     // 4. 测试许可证验证 - 无效机器指纹
     console.log('4️⃣  测试许可证验证 (错误的机器指纹)...');
     const wrongMachineId = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF';
-    const invalidResult1 = verifyLicense(wrongMachineId, license);
+    const invalidResult1 = verifyLicense(wrongMachineId, license, publicKey);
     console.log(`   ✅ 验证结果: ${invalidResult1.valid ? '有效' : '无效'} (预期: 无效)`);
     console.log(`   ✅ 消息: ${invalidResult1.message}\n`);
 
     // 5. 测试许可证验证 - 过期许可证
     console.log('5️⃣  测试许可证验证 (过期许可证)...');
     const expiredDate = '2020-01-01';
-    const expiredLicense = generateLicense(machineId, expiredDate);
-    const invalidResult2 = verifyLicense(machineId, expiredLicense);
+    const expiredLicense = generateLicense(machineId, expiredDate, privateKey);
+    const invalidResult2 = verifyLicense(machineId, expiredLicense, publicKey);
     console.log(`   ✅ 验证结果: ${invalidResult2.valid ? '有效' : '无效'} (预期: 无效)`);
     console.log(`   ✅ 消息: ${invalidResult2.message}`);
     console.log(`   ✅ 是否过期: ${invalidResult2.expired ? '是' : '否'}\n`);
@@ -58,7 +64,7 @@ async function testLicenseSystem() {
     // 6. 测试许可证验证 - 格式错误
     console.log('6️⃣  测试许可证验证 (格式错误的授权码)...');
     const malformedLicense = 'INVALID-LICENSE-CODE';
-    const invalidResult3 = verifyLicense(machineId, malformedLicense);
+    const invalidResult3 = verifyLicense(machineId, malformedLicense, publicKey);
     console.log(`   ✅ 验证结果: ${invalidResult3.valid ? '有效' : '无效'} (预期: 无效)`);
     console.log(`   ✅ 消息: ${invalidResult3.message}\n`);
 
@@ -67,8 +73,8 @@ async function testLicenseSystem() {
     const soonExpireDate = new Date();
     soonExpireDate.setDate(soonExpireDate.getDate() + 15);
     const soonExpireDateStr = soonExpireDate.toISOString().split('T')[0];
-    const soonExpireLicense = generateLicense(machineId, soonExpireDateStr);
-    const soonExpireResult = verifyLicense(machineId, soonExpireLicense);
+    const soonExpireLicense = generateLicense(machineId, soonExpireDateStr, privateKey);
+    const soonExpireResult = verifyLicense(machineId, soonExpireLicense, publicKey);
     console.log(`   ✅ 验证结果: ${soonExpireResult.valid ? '有效' : '无效'}`);
     console.log(`   ✅ 剩余天数: ${soonExpireResult.remainingDays} 天`);
     console.log(`   ✅ 是否需要续期提醒: ${soonExpireResult.remainingDays < 30 ? '是' : '否'}\n`);

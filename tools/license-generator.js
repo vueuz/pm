@@ -6,8 +6,48 @@
  * 示例: node tools/license-generator.js ABC123DEF456 2025-12-31 PRODUCT-001
  */
 
-const { generateLicense } = require('../utils/license');
-const { isValidMachineId } = require('../utils/fingerprint');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+function isValidMachineId(machineId) {
+  return /^[A-F0-9]{32}$/.test(machineId);
+}
+
+function loadPrivateKey(provided) {
+  if (provided) return provided;
+  if (process.env.PM_LICENSE_PRIVATE_KEY) return process.env.PM_LICENSE_PRIVATE_KEY;
+  const p = path.join(__dirname, '..', 'keys', 'private.pem');
+  if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
+  return null;
+}
+
+function formatLicense(license) {
+  const formatted = license.match(/.{1,4}/g) || [];
+  return formatted.join('-');
+}
+
+function generateLicense(machineId, expiryDate, privateKey) {
+  if (!machineId || !expiryDate) {
+    throw new Error('机器指纹和过期时间不能为空');
+  }
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(expiryDate)) {
+    throw new Error('过期时间格式错误，应为 YYYY-MM-DD');
+  }
+  const expiryTimestamp = new Date(expiryDate).getTime();
+  const data = `${machineId}|${expiryTimestamp}`;
+  const pk = loadPrivateKey(privateKey);
+  if (!pk) {
+    throw new Error('缺少私钥');
+  }
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(data);
+  const signature = signer.sign(pk, 'base64');
+  const licenseCode = `${machineId.substring(0, 8)}-${expiryTimestamp}-${signature}`;
+  const encodedLicense = Buffer.from(licenseCode).toString('base64');
+  return formatLicense(encodedLicense);
+}
 
 // 获取命令行参数
 const args = process.argv.slice(2);
@@ -73,7 +113,14 @@ try {
   console.log(`  产品ID:   ${productId}`);
   console.log('');
   
-  const license = generateLicense(machineId, expiryDate);
+  let privateKey = process.env.PM_LICENSE_PRIVATE_KEY || null;
+  if (!privateKey) {
+    const keyPath = path.join(__dirname, '..', 'keys', 'private.pem');
+    if (fs.existsSync(keyPath)) {
+      privateKey = fs.readFileSync(keyPath, 'utf8');
+    }
+  }
+  const license = generateLicense(machineId, expiryDate, privateKey);
   
   console.log('✅ 许可证生成成功!\n');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
