@@ -103,7 +103,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background-size: cover;
+    background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
     opacity: 0;
@@ -119,7 +119,7 @@ body {
     bottom: 60px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
+    display: none; /* 隐藏圆点指示器 */
     gap: 10px;
     z-index: 10001;
 }

@@ -24,7 +24,8 @@ let carouselState = {
     progressTimer: null,
     startTime: null,
     displayDuration: 15000,
-    switchTime: 3000
+    switchTime: 3000,
+    usedSlides: [] // 用于跟踪已播放的幻灯片索引，支持随机播放功能
 };
 
 // 初始化应用
@@ -996,7 +997,19 @@ async function showCarousel() {
     carouselState.totalSlides = carouselConfig.images.length;
     carouselState.displayDuration = carouselConfig.displayDuration || 15000;
     carouselState.switchTime = carouselConfig.switchTime || 3000;
-    carouselState.currentSlide = 0;
+    
+    // 重置已播放的幻灯片记录，确保每次显示轮播图时都是全新的随机播放
+    carouselState.usedSlides = [];
+    
+    // 如果启用随机播放，随机选择第一张幻灯片
+    const isRandomMode = carouselConfig.random === true;
+    if (isRandomMode && carouselState.totalSlides > 1) {
+        carouselState.currentSlide = Math.floor(Math.random() * carouselState.totalSlides);
+        // 记录已播放的第一张幻灯片
+        carouselState.usedSlides.push(carouselState.currentSlide);
+    } else {
+        carouselState.currentSlide = 0;
+    }
 
     // 渲染轮播图
     renderCarouselSlides(carouselConfig.images);
@@ -1020,8 +1033,20 @@ function renderCarouselSlides(images) {
     images.forEach((imageUrl, index) => {
         const slide = document.createElement('div');
         slide.className = 'carousel-slide';
-        slide.style.backgroundImage = `url('${imageUrl}')`;
-        if (index === 0) {
+        
+        // 创建一个预加载图片来检查图片是否有效
+        const img = new Image();
+        img.onload = function() {
+            slide.style.backgroundImage = `url('${imageUrl}')`;
+        };
+        img.onerror = function() {
+            // 如果图片加载失败，显示占位符
+            slide.style.backgroundColor = '#333';
+            slide.innerHTML = '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-size: 18px;">图片加载失败</div>';
+        };
+        img.src = imageUrl;
+        
+        if (index === carouselState.currentSlide) {
             slide.classList.add('active');
         }
         elements.carouselSlides.appendChild(slide);
@@ -1037,7 +1062,7 @@ function renderCarouselIndicators() {
     for (let i = 0; i < carouselState.totalSlides; i++) {
         const indicator = document.createElement('div');
         indicator.className = 'carousel-indicator';
-        if (i === 0) {
+        if (i === carouselState.currentSlide) {
             indicator.classList.add('active');
         }
         indicator.addEventListener('click', () => goToSlide(i));
@@ -1082,7 +1107,47 @@ function startProgressBar() {
 
 // 下一张幻灯片
 function nextSlide() {
-    const nextIndex = (carouselState.currentSlide + 1) % carouselState.totalSlides;
+    // 检查是否启用随机播放
+    const carouselConfig = appStore.config.carousel || {};
+    const isRandomMode = carouselConfig.random === true;
+    
+    let nextIndex;
+    
+    if (isRandomMode && carouselState.totalSlides > 1) {
+        // 随机播放模式
+        // 获取未播放过的幻灯片索引
+        const availableSlides = [];
+        for (let i = 0; i < carouselState.totalSlides; i++) {
+            if (!carouselState.usedSlides.includes(i)) {
+                availableSlides.push(i);
+            }
+        }
+        
+        // 如果所有幻灯片都已播放过，重置已播放记录并允许随机播放所有图片
+        if (availableSlides.length === 0) {
+            carouselState.usedSlides = [];
+            // 允许随机播放所有幻灯片
+            for (let i = 0; i < carouselState.totalSlides; i++) {
+                availableSlides.push(i);
+            }
+        }
+        
+        // 如果仍有可选幻灯片，从中随机选择
+        if (availableSlides.length > 0) {
+            const randomIndex = Math.floor(Math.random() * availableSlides.length);
+            nextIndex = availableSlides[randomIndex];
+        } else {
+            // 如果没有可选幻灯片（可能只剩当前幻灯片），选择下一个
+            nextIndex = (carouselState.currentSlide + 1) % carouselState.totalSlides;
+        }
+        
+        // 记录已播放的幻灯片
+        carouselState.usedSlides.push(nextIndex);
+    } else {
+        // 顺序播放模式
+        nextIndex = (carouselState.currentSlide + 1) % carouselState.totalSlides;
+    }
+    
     goToSlide(nextIndex);
 }
 

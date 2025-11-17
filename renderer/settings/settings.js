@@ -1162,6 +1162,12 @@ class SettingsManager {
         }
         if (switchTime) this.config.carousel.switchTime = parseInt(switchTime.value);
         if (displayDuration) this.config.carousel.displayDuration = parseInt(displayDuration.value);
+        
+        // 更新轮播图随机播放配置
+        const carouselRandomYes = document.querySelector('input[name="carousel-random"][value="true"]');
+        if (carouselRandomYes) {
+            this.config.carousel.random = carouselRandomYes.checked;
+        }
 
         // 更新图标配置
         const hideIconNameYes = document.querySelector('input[name="hide-icon-name"][value="true"]');
@@ -1273,6 +1279,18 @@ class SettingsManager {
         }
         if (switchTime) switchTime.value = this.config.carousel.switchTime;
         if (displayDuration) displayDuration.value = this.config.carousel.displayDuration;
+        
+        // 填充轮播图随机播放配置
+        const carouselRandomYes = document.querySelector('input[name="carousel-random"][value="true"]');
+        const carouselRandomNo = document.querySelector('input[name="carousel-random"][value="false"]');
+        
+        if (carouselRandomYes && carouselRandomNo) {
+            if (this.config.carousel.random) {
+                carouselRandomYes.checked = true;
+            } else {
+                carouselRandomNo.checked = true;
+            }
+        }
 
         // 填充图标配置
         const hideIconNameYes = document.querySelector('input[name="hide-icon-name"][value="true"]');

@@ -149,6 +149,7 @@
   },
   "carousel": {
     "enabled": true,
+    "random": false,
     "images": [
       "assets/carousel/miaosuan.gif",
       "assets/carousel/diting.gif",
