@@ -46,6 +46,7 @@
       "renderer/**/*",
       "configs/**/*",
       "utils/**/*",
+      "keys/**/*",
       "assets/**/*",
       "native/**/*",
       "node_modules/**/*",
@@ -63,7 +64,8 @@
     ],
     "asarUnpack": [
       "configs/**/*",
-      "native/**/*"
+      "native/**/*",
+      "keys/**/*"
     ],
     "afterPack": "./build-hooks.js",
     "win": {

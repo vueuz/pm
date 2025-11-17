@@ -37,9 +37,15 @@
 ## 步骤二：在客户端部署公钥
 
 - 两种方式任选其一：
-  - 文件方式：将 `keys/public.pem` 放入应用包（默认路径）。
-  - 环境变量：`export PM_LICENSE_PUBLIC_KEY="$(cat keys/public.pem)"`
-- 客户端加载优先级：函数参数 > 环境变量 > 默认文件路径。
+  - 文件方式：将 `keys/public.pem` 放入应用包（默认路径，已纳入打包配置）。
+  - 环境变量：`PM_LICENSE_PUBLIC_KEY` 注入 PEM 文本，或使用 `PM_LICENSE_PUBLIC_KEY_FILE` 提供文件路径。
+- 客户端加载优先级：函数参数 > 环境变量 (`PM_LICENSE_PUBLIC_KEY` / `PM_LICENSE_PUBLIC_KEY_FILE`) > 默认文件路径。
+
+生产环境注意：
+- GUI 启动的应用通常不会继承终端中的 `export` 变量。
+- macOS 可在 `Info.plist` 的 `LSEnvironment` 中设置 `PM_LICENSE_PUBLIC_KEY`；或使用启动脚本设置后再启动应用。
+- Windows 可设置系统/用户环境变量，或通过启动器脚本 `set PM_LICENSE_PUBLIC_KEY=...` 后启动。
+- 已支持在打包产物中查找 `process.resourcesPath/keys/public.pem` 及 `app.asar.unpacked/keys/public.pem`，无需额外配置即可使用文件方式。
 
 ## 步骤三：获取用户机器指纹
 
@@ -118,4 +124,3 @@
 
 - `tools/generate-keys.js` 可直接复制到外部环境使用，不依赖项目其他模块。
 - 你也可以改用 OpenSSL 或你的密钥管理系统以满足安全合规要求。
-

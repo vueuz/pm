@@ -5,8 +5,18 @@ const path = require('path');
 function loadPublicKey(provided) {
   if (provided) return provided;
   if (process.env.PM_LICENSE_PUBLIC_KEY) return process.env.PM_LICENSE_PUBLIC_KEY;
+  if (process.env.PM_LICENSE_PUBLIC_KEY_FILE) {
+    const f = process.env.PM_LICENSE_PUBLIC_KEY_FILE;
+    if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8');
+  }
   const p = path.join(__dirname, '..', 'keys', 'public.pem');
   if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8');
+  if (process.resourcesPath) {
+    const r1 = path.join(process.resourcesPath, 'keys', 'public.pem');
+    if (fs.existsSync(r1)) return fs.readFileSync(r1, 'utf8');
+    const r2 = path.join(process.resourcesPath, 'app.asar.unpacked', 'keys', 'public.pem');
+    if (fs.existsSync(r2)) return fs.readFileSync(r2, 'utf8');
+  }
   return null;
 }
 
