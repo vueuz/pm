@@ -75,6 +75,7 @@
           "x64"
         ]
       },
+      "icon": "assets/icons/app-icon.ico",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -95,7 +96,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "assets/icons/app-icon.png",
+      "icon": "assets/icons/app-icon-linux.png",
       "category": "Utility"
     }
   }

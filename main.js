@@ -39,6 +39,8 @@ function createMainWindow() {
     skipTaskbar: true,
     autoHideMenuBar: true,
     fullscreen: true,
+    // 添加图标配置
+    icon: path.join(__dirname, 'assets/icons/app-icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -152,6 +154,8 @@ function createActivationWindow() {
     minWidth: 600,
     minHeight: 650,
     resizable: false,
+    // 添加图标配置
+    icon: path.join(__dirname, 'assets/icons/app-icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -251,6 +255,8 @@ function createSettingsWindow() {
     height: 700,
     minWidth: 800,
     minHeight: 600,
+    // 添加图标配置
+    icon: path.join(__dirname, 'assets/icons/app-icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
