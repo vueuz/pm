@@ -34,8 +34,7 @@ function createMainWindow() {
     minHeight: 600,
     frame: false,
     kiosk: true,
-    // 移除 alwaysOnTop 以禁用窗口置顶
-    // alwaysOnTop: true,
+    alwaysOnTop: true,
     skipTaskbar: true,
     autoHideMenuBar: true,
     fullscreen: true,
@@ -56,8 +55,8 @@ function createMainWindow() {
   mainWindow.setFullScreen(true);
   mainWindow.setFocusable(true);
   mainWindow.setSkipTaskbar(true);
-  // 移除 alwaysOnTop 设置
-  // mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  // 设置窗口置顶
+  mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
   // 防最小化 / 失焦 / 退出等定时检查
   if (!global.windowLockInterval) {
