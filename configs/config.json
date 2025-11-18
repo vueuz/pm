@@ -122,7 +122,7 @@
     },
     {
       "id": "desktop",
-      "name": "切换模式",
+      "name": "退出专业模式",
       "type": "web",
       "url": "#quit",
       "icon": "icons8-change-100.png",
