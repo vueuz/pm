@@ -99,8 +99,5 @@
       "icon": "assets/icons/app-icon-linux.png",
       "category": "Utility"
     }
-  },
-  "packageConfig": {
-    "icon": "assets/icons/app-icon.ico"
   }
 }
