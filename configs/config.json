@@ -151,12 +151,13 @@
     "enabled": true,
     "random": false,
     "images": [
-      "assets/carousel/miaosuan.gif",
-      "assets/carousel/diting.gif",
-      "assets/carousel/dianshi.gif"
+      "assets/carousel/ms.gif",
+      "assets/carousel/dt.gif",
+      "assets/carousel/lx.gif",
+      "assets/carousel/ds.gif"
     ],
     "switchTime": 3000,
-    "displayDuration": 10
+    "displayDuration": 9000
   },
   "icon": {
     "hideName": false,
