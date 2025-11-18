@@ -73,6 +73,28 @@ function createMainWindow() {
     }, 1000);
   }
 
+  // 启动后前3秒内多次检查窗口焦点状态
+  let focusCheckCount = 0;
+  const focusCheckInterval = setInterval(() => {
+    if (!mainWindow) return;
+    
+    focusCheckCount++;
+    
+    // 检查窗口是否获得焦点，如果没有则使其获得焦点
+    if (!mainWindow.isFocused()) {
+      mainWindow.focus();
+      console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口未获得焦点，已设置焦点`);
+    } else {
+      console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口已获得焦点`);
+    }
+    
+    // 3秒后停止检查（每500ms检查一次，共检查6次）
+    if (focusCheckCount >= 6) {
+      clearInterval(focusCheckInterval);
+      console.log('窗口焦点检查: 3秒内焦点检查已完成');
+    }
+  }, 500);
+
   // 开发模式下打开开发者工具
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
