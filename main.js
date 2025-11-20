@@ -7,6 +7,7 @@ const { getMachineId } = require('./utils/fingerprint');
 const { verifyLicense } = require('./utils/license');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const os = require('os');
 
 // 加载原生模块用于按键禁用
 let nativeKeyBlocker = null;
@@ -384,6 +385,17 @@ function registerIPCHandlers() {
   // 处理系统信息请求
   ipcMain.handle('get-system-info', async () => {
     return await getSystemInfo();
+  });
+  
+  // 获取系统用户名
+  ipcMain.handle('get-username', async () => {
+    try {
+      return os.userInfo().username;
+    } catch (error) {
+      console.error('获取用户名失败:', error);
+      // 如果无法获取用户名，返回默认值
+      return '用户';
+    }
   });
 
   // 处理退出应用请求

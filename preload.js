@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 获取系统信息
   getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
   
+  // 获取系统用户名
+  getUsername: () => ipcRenderer.invoke('get-username'),
+  
   // 退出应用
   quitApp: () => ipcRenderer.send('quit-app'),
   

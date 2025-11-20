@@ -8,6 +8,7 @@ const appStore = {
 
 // DOM 元素
 let elements = {};
+let currentUsername = '用户01'; // 默认用户名
 
 // 视频播放状态
 let videoState = {
@@ -56,6 +57,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 初始化应用
 async function initializeApp() {
+    // 获取系统用户名
+    try {
+        if (typeof electronAPI !== 'undefined' && electronAPI.getUsername) {
+            currentUsername = await electronAPI.getUsername();
+        }
+    } catch (error) {
+        console.warn('获取系统用户名失败，使用默认用户名:', error);
+    }
+    
+    // 更新欢迎语
+    updateWelcomeMessage();
+    
     // 加载配置
     await loadConfig();
     
@@ -90,6 +103,14 @@ async function initializeApp() {
             updateUIWithConfig();
             renderAppIcons();
         });
+    }
+}
+
+// 更新欢迎语
+function updateWelcomeMessage() {
+    const welcomeElement = document.querySelector('#launcher-view h1');
+    if (welcomeElement) {
+        welcomeElement.textContent = `${currentUsername},您好`;
     }
 }
 
