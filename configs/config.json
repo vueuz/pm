@@ -121,6 +121,14 @@
       "visible": true
     },
     {
+      "id": "cookie-test",
+      "name": "Cookie测试",
+      "type": "web",
+      "url": "test-cookie.html",
+      "icon": "icons8-test-100.png",
+      "visible": true
+    },
+    {
       "id": "desktop",
       "name": "退出专业模式",
       "type": "web",

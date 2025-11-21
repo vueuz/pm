@@ -660,21 +660,30 @@ function openAppWindow(app) {
     const appType = app.type || 'web'; // 默认为web类型
     
     if (appType === 'web') {
-        // Web应用：使用iframe
         if (app.url && app.url !== '#') {
-            const iframe = document.createElement('iframe');
-            iframe.src = app.url;
-            iframe.title = app.name;
-            // 添加sandbox属性以避免ERR_BLOCKED_BY_RESPONSE错误
-            iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation';
-            iframe.addEventListener('load', () => {
-                try {
-                    if (app.id === 'settings' && typeof electronAPI !== 'undefined') {
-                        iframe.contentWindow.electronAPI = electronAPI;
-                    }
-                } catch (e) {}
-            });
-            content.appendChild(iframe);
+            const isHttp = /^https?:/i.test(app.url);
+            if (isHttp) {
+                const webview = document.createElement('webview');
+                webview.src = app.url;
+                webview.setAttribute('partition', 'persist:default');
+                webview.setAttribute('allowpopups', '');
+                webview.style.width = '100%';
+                webview.style.height = '100%';
+                content.appendChild(webview);
+            } else {
+                const iframe = document.createElement('iframe');
+                iframe.src = app.url;
+                iframe.title = app.name;
+                iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation';
+                iframe.addEventListener('load', () => {
+                    try {
+                        if (app.id === 'settings' && typeof electronAPI !== 'undefined') {
+                            iframe.contentWindow.electronAPI = electronAPI;
+                        }
+                    } catch (e) {}
+                });
+                content.appendChild(iframe);
+            }
         } else {
             content.innerHTML = `<div style="padding: 20px;">${app.name} 内容区域</div>`;
         }

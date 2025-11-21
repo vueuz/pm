@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, session } = require('electron');
 const path = require('path');
 const si = require('systeminformation');
 const configManager = require('./utils/configManager');
@@ -45,7 +45,9 @@ function createMainWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false // 仅用于开发环境，允许加载远程内容
+      webSecurity: false, // 仅用于开发环境，允许加载远程内容
+      webviewTag: true,
+      session: session.fromPartition('persist:default')
     }
   });
 
@@ -193,6 +195,33 @@ function createMainWindow() {
       mainWindow.webContents.send('window-url-changed', { url, isMainFrame });
     }
   });
+  
+  // 配置持久化会话，确保iframe中的cookie能够正确存储
+  const webContainerSession = session.fromPartition('persist:webcontainer');
+  webContainerSession.setUserAgent(mainWindow.webContents.getUserAgent());
+  
+  // 启用cookies
+  webContainerSession.cookies.on('changed', (event, cookie, cause, removed) => {
+    console.log('Cookie发生变化:', cookie.name, cookie.domain, cause, removed ? '已删除' : '已添加/修改');
+  });
+  
+  // 设置网络请求头，确保cookie能正确发送
+  webContainerSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    // 确保cookie头被正确设置
+    callback({ requestHeaders: details.requestHeaders });
+  });
+  
+  // 设置cookie策略，允许所有cookie
+  webContainerSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'cookies') {
+      callback(true); // 允许cookie
+    } else {
+      callback(false); // 拒绝其他权限
+    }
+  });
+  
+  // 禁用拼写检查以减少干扰
+  webContainerSession.setSpellCheckerEnabled(false);
 }
 
 // 创建激活窗口
@@ -688,6 +717,7 @@ app.on('will-quit', () => {
   
   // 注销全局快捷键
   globalShortcut.unregisterAll();
+  try { const s = session.fromPartition('persist:default'); if (s && s.flushStorageData) { s.flushStorageData(); } } catch (_) {}
   
   // 停止热键拦截
   try { 
