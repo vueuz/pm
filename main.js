@@ -74,9 +74,10 @@ function createMainWindow() {
     }, 1000);
   }
 
-  // 启动后前3秒内多次检查窗口焦点状态
+  // 启动后前3秒内多次检查窗口焦点状态，之后改为每秒检查
   let focusCheckCount = 0;
-  const focusCheckInterval = setInterval(() => {
+  let isInitialPhase = true;
+  const initialInterval = setInterval(() => {
     if (!mainWindow) return;
     
     focusCheckCount++;
@@ -89,10 +90,27 @@ function createMainWindow() {
       console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口已获得焦点`);
     }
     
-    // 3秒后停止检查（每500ms检查一次，共检查6次）
+    // 3秒后（6次检查）切换到每秒检查模式
     if (focusCheckCount >= 6) {
-      clearInterval(focusCheckInterval);
-      console.log('窗口焦点检查: 3秒内焦点检查已完成');
+      clearInterval(initialInterval);
+      isInitialPhase = false;
+      console.log('窗口焦点检查: 3秒内密集检查已完成，切换到每秒检查模式');
+      
+      // 启动每秒检查的定时器
+      const regularInterval = setInterval(() => {
+        if (!mainWindow) {
+          clearInterval(regularInterval);
+          return;
+        }
+        
+        // 检查窗口是否获得焦点，如果没有则使其获得焦点
+        if (!mainWindow.isFocused()) {
+          mainWindow.focus();
+          console.log('窗口焦点检查: 定期检查，窗口未获得焦点，已设置焦点');
+        } else {
+          console.log('窗口焦点检查: 定期检查，窗口已获得焦点');
+        }
+      }, 1000);
     }
   }, 500);
 
