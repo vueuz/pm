@@ -57,53 +57,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 初始化应用
 async function initializeApp() {
-    // 获取系统用户名
-    try {
-        if (typeof electronAPI !== 'undefined' && electronAPI.getUsername) {
-            currentUsername = await electronAPI.getUsername();
-        }
-    } catch (error) {
-        console.warn('获取系统用户名失败，使用默认用户名:', error);
+  // 获取系统用户名
+  try {
+    if (typeof electronAPI !== 'undefined' && electronAPI.getUsername) {
+      currentUsername = await electronAPI.getUsername();
     }
-    
-    // 更新欢迎语
-    updateWelcomeMessage();
-    
-    // 加载配置
-    await loadConfig();
-    
-    // 检查是否需要播放启动视频
-    if (shouldPlayInitVideo()) {
-        await playInitVideo();
-    } else {
-        // 如果不播放视频，直接隐藏视频容器
-        hideVideoContainer();
-        // 检查是否需要显示轮播图
-        if (shouldShowCarousel()) {
-            await showCarousel();
-        }
+  } catch (error) {
+    console.warn('获取系统用户名失败，使用默认用户名:', error);
+  }
+  
+  // 更新欢迎语
+  updateWelcomeMessage();
+  
+  // 加载配置
+  await loadConfig();
+  
+  // 检查是否需要播放启动视频
+  if (shouldPlayInitVideo()) {
+    await playInitVideo();
+  } else {
+    // 如果不播放视频，直接隐藏视频容器
+    hideVideoContainer();
+    // 检查是否需要显示轮播图
+    if (shouldShowCarousel()) {
+      await showCarousel();
     }
-    
-    setupEventListeners();
-    loadDefaultApps();
-    updateTime();
-    
-    // 启动定时器更新时间
-    setInterval(updateTime, 1000);
-    
-    // 注册快捷键监听器
-    registerShortcutListeners();
-    
-    // 监听配置更新
-    if (typeof electronAPI !== 'undefined' && electronAPI.onConfigUpdate) {
-        electronAPI.onConfigUpdate((newConfig) => {
-            console.log('配置已更新', newConfig);
-            appStore.config = newConfig;
-            appStore.apps = newConfig.apps.filter(app => app.visible);
-            updateUIWithConfig();
-            renderAppIcons();
-        });
-    }
+  }
+  
+  setupEventListeners();
+  loadDefaultApps();
+  updateTime();
+  
+  // 启动定时器更新时间
+  setInterval(updateTime, 1000);
+  
+  // 注册快捷键监听器
+  registerShortcutListeners();
+  
+  // 监听窗口URL变化事件
+  registerWindowUrlChangeListener();
+  
+  // 监听配置更新
+  if (typeof electronAPI !== 'undefined' && electronAPI.onConfigUpdate) {
+    electronAPI.onConfigUpdate((newConfig) => {
+      console.log('配置已更新', newConfig);
+      appStore.config = newConfig;
+      appStore.apps = newConfig.apps.filter(app => app.visible);
+      updateUIWithConfig();
+      renderAppIcons();
+    });
+  }
 }
 
 // 更新欢迎语
@@ -1295,4 +1298,34 @@ function switchToPreviousApp() {
     
     const prevAppId = openAppIds[prevIndex];
     activateAppWindow(prevAppId);
+}
+
+// 注册窗口URL变化监听器
+function registerWindowUrlChangeListener() {
+  if (typeof electronAPI === 'undefined' || !electronAPI.onWindowUrlChanged) return;
+  
+  electronAPI.onWindowUrlChanged((data) => {
+    console.log('窗口URL发生变化:', data);
+    // 刷新所有iframe
+    refreshAllIframes();
+  });
+}
+
+// 刷新所有iframe
+function refreshAllIframes() {
+  const iframes = document.querySelectorAll('iframe');
+  iframes.forEach((iframe, index) => {
+    try {
+      // 检查iframe是否有效
+      if (iframe && iframe.contentWindow) {
+        // 保存当前iframe的src
+        const src = iframe.src;
+        // 重新加载iframe
+        iframe.src = src;
+        console.log(`刷新iframe ${index}:`, src);
+      }
+    } catch (error) {
+      console.error(`刷新iframe ${index} 失败:`, error);
+    }
+  });
 }

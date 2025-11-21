@@ -34,6 +34,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('config-updated', subscription);
   },
   
+  // 监听窗口URL变化事件
+  onWindowUrlChanged: (callback) => {
+    const subscription = (event, data) => callback(data);
+    ipcRenderer.on('window-url-changed', subscription);
+    return () => ipcRenderer.removeListener('window-url-changed', subscription);
+  },
+  
   // 快捷键事件监听
   onShortcutCloseApp: (callback) => {
     const subscription = (event) => callback();

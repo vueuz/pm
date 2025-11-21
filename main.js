@@ -179,6 +179,20 @@ function createMainWindow() {
     const headers = details.responseHeaders || {};
     callback({ responseHeaders: headers });
   });
+  
+  // 监听导航事件，当URL发生变化时通知渲染进程刷新iframe
+  mainWindow.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-url-changed', { url, httpResponseCode, httpStatusText });
+    }
+  });
+  
+  // 监听导航完成事件
+  mainWindow.webContents.on('did-navigate-in-page', (event, url, isMainFrame) => {
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send('window-url-changed', { url, isMainFrame });
+    }
+  });
 }
 
 // 创建激活窗口
@@ -306,6 +320,11 @@ function createSettingsWindow() {
 
   // 加载设置界面
   settingsWindow.loadFile('renderer/settings/index.html');
+  
+  // 开发模式下打开开发者工具
+  if (process.env.NODE_ENV === 'development') {
+    settingsWindow.webContents.openDevTools();
+  }
   
   // 设置窗口创建后继续保持按键禁用
   settingsWindow.on('ready-to-show', () => {
