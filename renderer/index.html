@@ -60,10 +60,29 @@
             <img src="assets/icons/icons8-home-100.png" alt="主页">
         </div>
         <div id="dock-apps" class="dock-apps"></div>
-        <div class="dock-time">
-            <span id="current-time">--:--:--</span>
+        <div class="dock-right">
+            <div class="dock-time">
+                <span id="current-time">--:--:--</span>
+            </div>
+            <div class="dock-item" id="download-button">
+                <img src="assets/icons/icons8-product-documents-100.png" alt="下载">
+            </div>
         </div>
     </div>
+
+    <div id="download-panel" class="download-panel hidden">
+        <div class="panel-header">
+            <span>下载管理器</span>
+            <div class="panel-header-controls">
+                <span id="dl-count" class="count">0 项</span>
+                <button id="close-download-panel" class="panel-close-btn">×</button>
+            </div>
+        </div>
+        <div id="dl-list" class="panel-list"></div>
+        <div class="panel-section"><button id="toggle-history" class="section-toggle"><span>历史</span><span class="chev">⌄</span></button></div>
+        <div id="dl-history" class="panel-list collapsed"></div>
+    </div>
+
 
     <script src="renderer.js"></script>
 </body>

@@ -38,6 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
         appWindowsContainer: document.getElementById('app-windows-container'),
         dockApps: document.getElementById('dock-apps'),
         homeButton: document.getElementById('home-button'),
+        dockBar: document.getElementById('dock-bar'),
+        downloadButton: document.getElementById('download-button'),
+        downloadPanel: document.getElementById('download-panel'),
+        dlList: document.getElementById('dl-list'),
+        dlHistory: document.getElementById('dl-history'),
+        historyToggle: document.getElementById('toggle-history'),
+        dlCount: document.getElementById('dl-count'),
+        closeDownloadPanel: document.getElementById('close-download-panel'),
         mainContent: document.getElementById('main-content'),
         carouselContainer: document.getElementById('carousel-container'),
         carouselSlides: document.getElementById('carousel-slides'),
@@ -85,6 +93,7 @@ async function initializeApp() {
   }
   
   setupEventListeners();
+  setupDownloadUI();
   loadDefaultApps();
   updateTime();
   
@@ -416,6 +425,165 @@ function setupEventListeners() {
     }
 }
 
+// ========== 下载面板与提示 ==========
+const downloadItems = new Map();
+let hasUnreadDownloads = false;
+
+function setupDownloadUI() {
+  if (elements.downloadButton) {
+    elements.downloadButton.addEventListener('click', toggleDownloadPanel);
+  }
+  if (elements.closeDownloadPanel) {
+    elements.closeDownloadPanel.addEventListener('click', hideDownloadPanel);
+  }
+  document.addEventListener('click', (e) => {
+    const withinPanel = elements.downloadPanel && elements.downloadPanel.contains(e.target);
+    const onButton = elements.downloadButton && elements.downloadButton.contains(e.target);
+    if (!withinPanel && !onButton) hideDownloadPanel();
+  });
+
+  if (window.downloadsAPI) {
+    window.downloadsAPI.windowReady();
+    window.downloadsAPI.onStart((data) => { updateDownloadItem(data); updateDockProgress(data); });
+    window.downloadsAPI.onProgress((data) => { updateDownloadItem(data); updateDockProgress(data); });
+    window.downloadsAPI.onComplete((data) => {
+      updateDownloadItem(data);
+      updateDockProgress(data);
+      if (elements.downloadPanel && elements.downloadPanel.classList.contains('hidden')) {
+        toggleDownloadPanel();
+      }
+    });
+    window.downloadsAPI.onCancelled(updateDownloadItem);
+    window.downloadsAPI.onList(({ list, history }) => {
+      list.forEach(d => updateDownloadItem(d));
+      renderHistory(history);
+    });
+  }
+
+  if (elements.historyToggle && elements.dlHistory) {
+    elements.dlHistory.classList.add('collapsed');
+    elements.historyToggle.addEventListener('click', () => {
+      const isCollapsed = elements.dlHistory.classList.contains('collapsed');
+      if (isCollapsed) {
+        elements.dlHistory.classList.remove('collapsed');
+        elements.historyToggle.classList.add('expanded');
+      } else {
+        elements.dlHistory.classList.add('collapsed');
+        elements.historyToggle.classList.remove('expanded');
+      }
+    });
+  }
+
+  
+}
+
+function toggleDownloadPanel() {
+  if (!elements.downloadPanel || !elements.downloadButton) return;
+  if (!elements.downloadPanel.classList.contains('hidden')) {
+    hideDownloadPanel();
+    return;
+  }
+
+  const panel = elements.downloadPanel;
+  const buttonRect = elements.downloadButton.getBoundingClientRect();
+  const dockRect = elements.dockBar.getBoundingClientRect();
+  const margin = 6;
+  const panelWidth = 420;
+
+  // Center panel horizontally above the button
+  let left = Math.round(buttonRect.left + buttonRect.width / 2 - panelWidth / 2);
+  // Clamp to screen edges
+  left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+
+  // Position panel vertically, 2px above the dock
+  const bottom = window.innerHeight - dockRect.top + 2;
+
+  panel.style.left = `${left}px`;
+  panel.style.width = `${panelWidth}px`;
+  panel.style.maxHeight = `${Math.round(window.innerHeight * 0.56)}px`;
+  panel.style.bottom = `${bottom}px`;
+  panel.style.top = 'auto'; // Ensure top is not set
+
+  panel.classList.remove('hidden');
+
+  // Clear unread indicator
+  hasUnreadDownloads = false;
+  if (elements.downloadButton) {
+    elements.downloadButton.classList.remove('has-unread');
+  }
+}
+
+function hideDownloadPanel() {
+  if (elements.downloadPanel) elements.downloadPanel.classList.add('hidden');
+}
+
+function fmtSize(bytes) {
+  if (!bytes && bytes !== 0) return '--';
+  const units = ['B','KB','MB','GB','TB'];
+  let i = 0; let b = bytes;
+  while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+  return `${b.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function updateDownloadItem(data) {
+  downloadItems.set(data.id, data);
+  if (!elements.dlList) return;
+  let row = document.getElementById(`dl-${data.id}`);
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'download-item';
+    row.id = `dl-${data.id}`;
+    const meta = document.createElement('div'); meta.className = 'download-meta';
+    const name = document.createElement('div'); name.className = 'download-name';
+    const stats = document.createElement('div'); stats.className = 'download-stats';
+    const bar = document.createElement('div'); bar.className = 'download-bar';
+    const barInner = document.createElement('div'); bar.appendChild(barInner);
+    meta.appendChild(name); meta.appendChild(stats); meta.appendChild(bar);
+    const actions = document.createElement('div'); actions.className = 'download-actions';
+    const openBtn = document.createElement('button'); openBtn.className = 'download-btn'; openBtn.textContent = '打开文件'; openBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFile(data.id);
+    const folderBtn = document.createElement('button'); folderBtn.className = 'download-btn'; folderBtn.textContent = '打开文件夹'; folderBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFolder(data.id);
+    actions.appendChild(openBtn); actions.appendChild(folderBtn);
+    row.appendChild(meta); row.appendChild(actions);
+    elements.dlList.appendChild(row);
+    elements.dlList.scrollTop = elements.dlList.scrollHeight;
+  }
+  const nameEl = row.querySelector('.download-name');
+  const statsEl = row.querySelector('.download-stats');
+  const barInnerEl = row.querySelector('.download-bar > div');
+  const barEl = row.querySelector('.download-bar');
+  nameEl.textContent = data.filename;
+  const pct = data.totalBytes > 0 ? Math.floor((data.receivedBytes / data.totalBytes) * 100) : 0;
+  if (data.state === 'downloading') {
+    if(barEl) barEl.style.display = 'block';
+    barInnerEl.style.width = `${pct}%`;
+    const speedStr = data.speed ? `${fmtSize(data.speed)}/s` : '--';
+    statsEl.textContent = `${fmtSize(data.receivedBytes)} / ${fmtSize(data.totalBytes)} · ${speedStr}`;
+  } else {
+    if(barEl) barEl.style.display = 'none';
+    statsEl.textContent = `${fmtSize(data.totalBytes)} · ${data.state === 'completed' ? '已完成' : '已取消'}`;
+  }
+  if (elements.dlCount) elements.dlCount.textContent = `共 ${downloadItems.size} 项`;
+}
+
+function renderHistory(items) {
+  if (!elements.dlHistory) return;
+  elements.dlHistory.innerHTML = '';
+  items.forEach(d => {
+    const row = document.createElement('div'); row.className = 'download-item';
+    const meta = document.createElement('div'); meta.className = 'download-meta';
+    const name = document.createElement('div'); name.className = 'download-name'; name.textContent = d.filename;
+    const stats = document.createElement('div'); stats.className = 'download-stats'; stats.textContent = `${fmtSize(d.totalBytes)} · ${d.state === 'completed' ? '已完成' : '已取消'}`;
+    meta.appendChild(name); meta.appendChild(stats);
+    const actions = document.createElement('div'); actions.className = 'download-actions';
+    const openBtn = document.createElement('button'); openBtn.className = 'download-btn'; openBtn.textContent = '打开文件'; openBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFile(d.id);
+    const folderBtn = document.createElement('button'); folderBtn.className = 'download-btn'; folderBtn.textContent = '打开文件夹'; folderBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFolder(d.id);
+    row.appendChild(meta); actions.appendChild(openBtn); actions.appendChild(folderBtn); row.appendChild(actions);
+    elements.dlHistory.appendChild(row);
+  });
+}
+
+ 
+
 // 加载默认应用
 function loadDefaultApps() {
     // 这里可以加载本地存储的应用列表
@@ -510,25 +678,14 @@ function renderDockApps() {
                 dockItem.innerHTML = `<div class="default-dock-icon">${initials}</div>`;
             }
             
-            // 添加悬停提示
-            const tooltip = document.createElement('div');
-            tooltip.className = 'dock-tooltip';
-            tooltip.textContent = app.name;
-            dockItem.appendChild(tooltip);
+    // 不显示悬停提示
             
             dockItem.addEventListener('click', () => toggleAppWindow(appId));
             elements.dockApps.appendChild(dockItem);
         }
     });
     
-    // 为主页按钮添加悬停提示
-    const homeButton = document.getElementById('home-button');
-    if (homeButton && !homeButton.querySelector('.dock-tooltip')) {
-        const homeTooltip = document.createElement('div');
-        homeTooltip.className = 'dock-tooltip';
-        homeTooltip.textContent = '主页';
-        homeButton.appendChild(homeTooltip);
-    }
+    // 不显示主页按钮的悬停提示
 }
 
 // 处理应用图标点击
@@ -1337,4 +1494,30 @@ function refreshAllIframes() {
       console.error(`刷新iframe ${index} 失败:`, error);
     }
   });
+}
+function updateDockProgress(data) {
+  if (!elements.downloadButton) return;
+  let bar = elements.downloadButton.querySelector('.dock-progress');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'dock-progress';
+    const inner = document.createElement('div');
+    inner.className = 'dock-progress-inner';
+    bar.appendChild(inner);
+    elements.downloadButton.appendChild(bar);
+  }
+  const innerEl = bar.querySelector('.dock-progress-inner');
+  const pct = data.totalBytes > 0 ? Math.floor((data.receivedBytes / data.totalBytes) * 100) : 0;
+  if (data.state === 'downloading') {
+    bar.style.display = 'block';
+    elements.downloadButton.classList.add('with-progress');
+    innerEl.style.width = `${pct}%`;
+  } else {
+    innerEl.style.width = '100%';
+    setTimeout(() => {
+      bar.style.display = 'none';
+      elements.downloadButton.classList.remove('with-progress');
+      innerEl.style.width = '0%';
+    }, 400);
+  }
 }

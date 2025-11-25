@@ -77,3 +77,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkLicense: () => ipcRenderer.invoke('check-license'),
   closeActivationWindow: () => ipcRenderer.send('close-activation-window')
 });
+contextBridge.exposeInMainWorld('downloadsAPI', {
+  onStart: (callback) => {
+    const sub = (event, data) => callback(data);
+    ipcRenderer.on('download-start', sub);
+    return () => ipcRenderer.removeListener('download-start', sub);
+  },
+  onProgress: (callback) => {
+    const sub = (event, data) => callback(data);
+    ipcRenderer.on('download-progress', sub);
+    return () => ipcRenderer.removeListener('download-progress', sub);
+  },
+  onComplete: (callback) => {
+    const sub = (event, data) => callback(data);
+    ipcRenderer.on('download-complete', sub);
+    return () => ipcRenderer.removeListener('download-complete', sub);
+  },
+  onCancelled: (callback) => {
+    const sub = (event, data) => callback(data);
+    ipcRenderer.on('download-cancelled', sub);
+    return () => ipcRenderer.removeListener('download-cancelled', sub);
+  },
+  onList: (callback) => {
+    const sub = (event, data) => callback(data);
+    ipcRenderer.on('download-list', sub);
+    return () => ipcRenderer.removeListener('download-list', sub);
+  },
+  openFile: (id) => ipcRenderer.invoke('download-open-file', id),
+  openFolder: (id) => ipcRenderer.invoke('download-open-folder', id),
+  windowReady: () => ipcRenderer.send('downloads-window-ready')
+});
+
+ 

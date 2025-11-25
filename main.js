@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, globalShortcut, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut, session, Tray, screen, shell } = require('electron');
 const path = require('path');
 const si = require('systeminformation');
 const configManager = require('./utils/configManager');
@@ -22,6 +22,44 @@ try {
 let mainWindow = null;
 let settingsWindow = null;
 let activationWindow = null;
+let tray = null;
+let downloadsWindow = null;
+ 
+
+const downloadsStore = {
+  current: new Map(),
+  history: []
+};
+
+const MAX_DOWNLOAD_HISTORY = 200;
+
+function loadDownloadsHistory() {
+  try {
+    const dir = path.join(app.getPath('userData'), 'downloads');
+    const file = path.join(dir, 'history.json');
+    if (fs.existsSync(file)) {
+      const data = fs.readFileSync(file, 'utf8');
+      const arr = JSON.parse(data);
+      if (Array.isArray(arr)) {
+        downloadsStore.history = arr.slice(0, MAX_DOWNLOAD_HISTORY);
+      }
+    }
+  } catch (_) {}
+}
+
+function saveDownloadsHistory() {
+  try {
+    const dir = path.join(app.getPath('userData'), 'downloads');
+    const file = path.join(dir, 'history.json');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (downloadsStore.history.length > MAX_DOWNLOAD_HISTORY) {
+      downloadsStore.history = downloadsStore.history.slice(0, MAX_DOWNLOAD_HISTORY);
+    }
+    fs.writeFileSync(file, JSON.stringify(downloadsStore.history, null, 2));
+  } catch (_) {}
+}
 
 // 许可证存储路径
 const licenseFile = path.join(app.getPath('userData'), 'license.dat');
@@ -166,9 +204,38 @@ function createMainWindow() {
     mainWindow.focus();
   });
   
-  // 处理新窗口打开事件，避免ERR_BLOCKED_BY_RESPONSE错误
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    return { action: 'allow' };
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        show: false,
+        frame: false,
+        skipTaskbar: true,
+        autoHideMenuBar: true,
+        transparent: true,
+        width: 1,
+        height: 1
+      }
+    };
+  });
+
+  mainWindow.webContents.on('did-create-window', (child) => {
+    try {
+      child.hide();
+      child.setSkipTaskbar(true);
+      child.webContents.setWindowOpenHandler(() => ({
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          show: false,
+          frame: false,
+          skipTaskbar: true,
+          autoHideMenuBar: true,
+          transparent: true,
+          width: 1,
+          height: 1
+        }
+      }));
+    } catch (_) {}
   });
   
   // 处理导航事件
@@ -223,6 +290,168 @@ function createMainWindow() {
   // 禁用拼写检查以减少干扰
   webContainerSession.setSpellCheckerEnabled(false);
 }
+
+function registerDownloadListener() {
+  const handleWillDownload = (sess) => {
+    if (!sess || !sess.on) return;
+    sess.on('will-download', (event, item, webContents) => {
+      const filename = item.getFilename();
+      const downloadsPath = app.getPath('downloads');
+      let savePath = path.join(downloadsPath, filename);
+      let counter = 1;
+      const { name, ext } = path.parse(filename);
+
+      while (fs.existsSync(savePath)) {
+        const newFilename = `${name} (${counter})${ext}`;
+        savePath = path.join(downloadsPath, newFilename);
+        counter++;
+      }
+
+      item.setSavePath(savePath);
+      const finalFilename = path.basename(savePath);
+
+      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const info = {
+        id,
+        filename: finalFilename,
+        path: savePath,
+        receivedBytes: 0,
+        totalBytes: item.getTotalBytes(),
+        state: 'downloading',
+        speed: 0
+      };
+      downloadsStore.current.set(id, info);
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.send('download-start', info);
+      }
+      
+      let lastBytes = 0;
+      let lastTime = Date.now();
+      item.on('updated', () => {
+        const received = item.getReceivedBytes();
+        const total = item.getTotalBytes();
+        const now = Date.now();
+        const deltaBytes = received - lastBytes;
+        const deltaTime = now - lastTime;
+        const speed = deltaTime > 0 ? Math.round(deltaBytes / (deltaTime / 1000)) : 0;
+        lastBytes = received;
+        lastTime = now;
+        const current = downloadsStore.current.get(id);
+        if (!current) return;
+        current.receivedBytes = received;
+        current.totalBytes = total;
+        current.state = 'downloading';
+        current.speed = speed;
+        downloadsStore.current.set(id, current);
+        if (mainWindow && mainWindow.webContents) {
+          mainWindow.webContents.send('download-progress', current);
+        }
+      });
+      item.once('done', (eventDone, state) => {
+        const current = downloadsStore.current.get(id);
+        if (!current) return;
+        current.state = state === 'completed' ? 'completed' : 'cancelled';
+        downloadsStore.current.set(id, current);
+        downloadsStore.history.unshift(current);
+        saveDownloadsHistory();
+        if (mainWindow && mainWindow.webContents) {
+          if (state === 'completed') {
+            mainWindow.webContents.send('download-complete', current);
+          } else {
+            mainWindow.webContents.send('download-cancelled', current);
+          }
+        }
+        
+      });
+      try {
+        const win = BrowserWindow.fromWebContents(webContents);
+        if (win && win !== mainWindow && win !== settingsWindow && win !== activationWindow && win !== downloadsWindow) {
+          try { win.close(); } catch (_) {}
+        }
+      } catch (_) {}
+    });
+  };
+  handleWillDownload(session.defaultSession);
+  try {
+    const defaultPartition = session.fromPartition('persist:default');
+    handleWillDownload(defaultPartition);
+  } catch (_) {}
+}
+
+function createTray() {
+  const iconPath = process.platform === 'linux' ? path.join(__dirname, 'assets/icons/app-icon-linux.png') : path.join(__dirname, 'assets/icons/app-icon.ico');
+  tray = new Tray(iconPath);
+  tray.setToolTip('下载管理器');
+  tray.on('click', () => {
+    toggleDownloadsWindow();
+  });
+}
+
+function calculatePopupPosition(targetBounds, winWidth, winHeight) {
+  const display = screen.getPrimaryDisplay();
+  const workArea = display.workArea;
+  let x = Math.round(targetBounds.x + targetBounds.width / 2 - winWidth / 2);
+  let y;
+  if (process.platform === 'darwin') {
+    y = Math.round(targetBounds.y + targetBounds.height + 6);
+  } else {
+    y = Math.round(targetBounds.y - winHeight - 6);
+  }
+  if (x < workArea.x) x = workArea.x + 6;
+  if (x + winWidth > workArea.x + workArea.width) x = workArea.x + workArea.width - winWidth - 6;
+  if (y < workArea.y) y = workArea.y + 6;
+  if (y + winHeight > workArea.y + workArea.height) y = workArea.y + workArea.height - winHeight - 6;
+  return { x, y };
+}
+
+function createDownloadsWindow() {
+  if (downloadsWindow) return;
+  downloadsWindow = new BrowserWindow({
+    width: 420,
+    height: 520,
+    resizable: false,
+    frame: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    transparent: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+  downloadsWindow.loadFile('renderer/downloads/index.html');
+  downloadsWindow.on('blur', () => {
+    if (downloadsWindow) downloadsWindow.hide();
+  });
+  downloadsWindow.on('closed', () => {
+    downloadsWindow = null;
+  });
+}
+
+function toggleDownloadsWindow() {
+  if (!tray) return;
+  if (!downloadsWindow) createDownloadsWindow();
+  const bounds = tray.getBounds();
+  const size = downloadsWindow.getBounds();
+  const pos = calculatePopupPosition(bounds, size.width, size.height);
+  downloadsWindow.setPosition(pos.x, pos.y, true);
+  if (downloadsWindow.isVisible()) {
+    downloadsWindow.hide();
+  } else {
+    downloadsWindow.show();
+    if (downloadsWindow && downloadsWindow.webContents) {
+      const list = Array.from(downloadsStore.current.values());
+      const history = downloadsStore.history;
+      downloadsWindow.webContents.send('download-list', { list, history });
+    }
+  }
+}
+
+ 
+
+ 
 
 // 创建激活窗口
 function createActivationWindow() {
@@ -431,6 +660,8 @@ app.whenReady().then(async () => {
   // 注册全局快捷键
   registerGlobalShortcuts();
 
+  loadDownloadsHistory();
+
   // macOS 特殊处理：如果没有窗口则创建新窗口
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -444,6 +675,7 @@ app.whenReady().then(async () => {
       callback(true);
     });
   });
+  registerDownloadListener();
 });
 
 // 注册IPC处理程序
@@ -526,6 +758,30 @@ function registerIPCHandlers() {
   ipcMain.handle('open-settings-window', () => {
     createSettingsWindow();
   });
+
+  ipcMain.on('downloads-window-ready', () => {
+    if (mainWindow && mainWindow.webContents) {
+      const list = Array.from(downloadsStore.current.values());
+      const history = downloadsStore.history;
+      mainWindow.webContents.send('download-list', { list, history });
+    }
+  });
+
+  ipcMain.handle('download-open-file', (event, id) => {
+    const info = downloadsStore.current.get(id) || downloadsStore.history.find(i => i.id === id);
+    if (!info) return false;
+    shell.openPath(info.path);
+    return true;
+  });
+
+  ipcMain.handle('download-open-folder', (event, id) => {
+    const info = downloadsStore.current.get(id) || downloadsStore.history.find(i => i.id === id);
+    if (!info) return false;
+    shell.showItemInFolder(info.path);
+    return true;
+  });
+
+  
 
   // 许可证管理相关IPC处理
   ipcMain.handle('get-machine-id', async () => {
@@ -733,4 +989,5 @@ app.on('will-quit', () => {
     clearInterval(global.windowLockInterval);
     global.windowLockInterval = null;
   }
+  try { saveDownloadsHistory(); } catch (_) {}
 });
