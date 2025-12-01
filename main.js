@@ -6,8 +6,9 @@ const hotkeyBlocker = require('./utils/hotkeyBlocker');
 const { getMachineId } = require('./utils/fingerprint');
 const { verifyLicense } = require('./utils/license');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const os = require('os');
+const koffi = require('koffi');
 
 // 加载原生模块用于按键禁用
 let nativeKeyBlocker = null;
@@ -16,6 +17,161 @@ try {
   console.log('原生按键禁用模块加载成功');
 } catch (err) {
   console.warn('原生按键禁用模块加载失败:', err.message);
+}
+
+// 本地应用运行状态管理
+const runningLocalApps = new Set();
+let kioskEnabled = true;
+let localModeActive = false;
+let wpsMonitorInterval = null;
+let localAppFocusMonitor = null;
+let localFocusObserved = false;
+let monitorStartTime = 0;
+let firstNonElectronObservedPid = 0;
+let monitorAppName = '';
+let allowedForegroundPids = new Set();
+
+function isWpsLauncherPath(p) {
+  if (!p) return false;
+  const lower = p.toLowerCase();
+  return lower.endsWith('ksolaunch.exe') || lower.includes('kingsoft') || lower.includes('wps office');
+}
+
+function startWpsMonitor() {
+  if (wpsMonitorInterval) return;
+  wpsMonitorInterval = setInterval(async () => {
+    try {
+      exec('powershell -NoProfile -Command "(Get-Process wps,wpp,et -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }).Count"', (err, stdout) => {
+        if (err) return;
+        const count = parseInt(String(stdout).trim(), 10);
+        if (!count || count === 0) {
+          clearInterval(wpsMonitorInterval);
+          wpsMonitorInterval = null;
+          localModeActive = false;
+          setKioskMode(true);
+        }
+      });
+    } catch (_) {}
+  }, 400);
+}
+
+function startLocalAppFocusMonitor(appPath) {
+  if (process.platform !== 'win32') return;
+  try {
+    try { monitorAppName = path.parse(appPath || '').name || ''; } catch (_) { monitorAppName = ''; }
+    if (localAppFocusMonitor) {
+      clearInterval(localAppFocusMonitor);
+      localAppFocusMonitor = null;
+    }
+    allowedForegroundPids.clear();
+    localFocusObserved = false;
+    firstNonElectronObservedPid = 0;
+    const user32 = koffi.load('user32.dll');
+    const GetForegroundWindow = user32.func('GetForegroundWindow', 'intptr', []);
+    const GetWindowThreadProcessId = user32.func('GetWindowThreadProcessId', 'uint32', ['intptr', 'uint32*']);
+    localAppFocusMonitor = setInterval(() => {
+      try {
+        if (runningLocalApps.size === 0) {
+          clearInterval(localAppFocusMonitor);
+          localAppFocusMonitor = null;
+          localFocusObserved = false;
+          firstNonElectronObservedPid = 0;
+          monitorAppName = '';
+          allowedForegroundPids.clear();
+          return;
+        }
+        if (Date.now() - monitorStartTime < 1500) {
+          return;
+        }
+        if (monitorAppName) {
+          exec('powershell -NoProfile -Command "(Get-Process -Name \'' + monitorAppName + '\' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -ExpandProperty Id) -join \" \""', (err, stdout) => {
+            if (err) return;
+            const ids = String(stdout).trim().split(/\s+/).map(s => parseInt(s, 10)).filter(n => Number.isFinite(n) && n > 0);
+            allowedForegroundPids = new Set(ids);
+          });
+        }
+        const hwnd = GetForegroundWindow();
+        if (!hwnd || hwnd === 0) return;
+        const pidBuf = Buffer.alloc(4);
+        GetWindowThreadProcessId(hwnd, pidBuf);
+        const activePid = pidBuf.readUInt32LE(0);
+        if (activePid <= 0) return;
+        if (!localFocusObserved) {
+          if (activePid !== process.pid && (allowedForegroundPids.size === 0 || allowedForegroundPids.has(activePid))) {
+            firstNonElectronObservedPid = activePid;
+            localFocusObserved = true;
+          }
+        } else {
+          if (!allowedForegroundPids.has(activePid) && activePid !== firstNonElectronObservedPid) {
+            setKioskMode(true);
+          }
+        }
+      } catch (_) {}
+    }, 700);
+  } catch (_) {}
+}
+
+// 切换 Kiosk 模式（锁定/解锁）
+function setKioskMode(enable) {
+  if (!mainWindow) return;
+
+  if (enable) {
+    // 启用锁定模式
+    console.log('进入 Kiosk 模式：锁定按键，禁用快捷键');
+    kioskEnabled = true;
+    localModeActive = false;
+    
+    // 恢复原生按键禁用
+    if (nativeKeyBlocker) {
+      try {
+        nativeKeyBlocker.disableAll();
+      } catch (err) {
+        console.warn('禁用按键失败:', err.message);
+      }
+    }
+    
+    // 注册全局快捷键（禁用 Alt+Tab 等）
+    registerGlobalShortcuts();
+    
+    // 恢复全屏与 Kiosk
+    try {
+      mainWindow.setKiosk(true);
+      mainWindow.setFullScreen(true);
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+    } catch (_) {}
+    
+    // 强制置顶
+    mainWindow.setAlwaysOnTop(true, 'screen-saver');
+    mainWindow.focus();
+    
+  } else {
+    // 解除锁定模式
+    console.log('退出 Kiosk 模式：允许按键，启用快捷键');
+    kioskEnabled = false;
+    localModeActive = true;
+    
+    // 解除原生按键禁用
+    if (nativeKeyBlocker) {
+      try {
+        nativeKeyBlocker.enableAll();
+      } catch (err) {
+        console.warn('恢复按键失败:', err.message);
+      }
+    }
+    
+    // 注销全局快捷键（允许 Alt+Tab）
+    globalShortcut.unregisterAll();
+    
+    // 取消置顶，允许其他窗口覆盖，并退出全屏/kiosk
+    try {
+      mainWindow.setAlwaysOnTop(false);
+      mainWindow.setKiosk(false);
+      mainWindow.setFullScreen(false);
+      mainWindow.blur();
+    } catch (_) {}
+    // 这里不强制最小化/隐藏，避免破坏用户切换路径
+  }
 }
 
 // 主窗口引用
@@ -99,15 +255,41 @@ function createMainWindow() {
   // 设置窗口置顶
   mainWindow.setAlwaysOnTop(true, 'screen-saver');
 
+  // 监听窗口焦点变化，处理本地应用共存逻辑
+  mainWindow.on('focus', () => {
+    // 如果有本地应用在运行，且主窗口获得焦点，说明用户可能最小化了本地应用
+    // 此时将主窗口设为置顶，确保覆盖桌面
+    if (kioskEnabled && runningLocalApps.size > 0) {
+      mainWindow.setAlwaysOnTop(true, 'screen-saver');
+      console.log('主窗口获得焦点，临时置顶');
+    }
+  });
+
+  mainWindow.on('blur', () => {
+    // 如果有本地应用在运行，且主窗口失去焦点（用户切换到了本地应用）
+    // 取消置顶，防止遮挡本地应用
+    if (runningLocalApps.size > 0) {
+      mainWindow.setAlwaysOnTop(false);
+      console.log('主窗口失去焦点，取消置顶');
+    }
+  });
+
   // 防最小化 / 失焦 / 退出等定时检查
   if (!global.windowLockInterval) {
     global.windowLockInterval = setInterval(() => {
       if (!mainWindow) return;
+      
+      if (!kioskEnabled || runningLocalApps.size > 0 || localModeActive) {
+        return;
+      }
+
       try {
         if (mainWindow.isMinimized()) mainWindow.restore();
         // 移除强制聚焦，允许其他窗口获得焦点
         // if (!mainWindow.isFocused()) { mainWindow.focus(); }
         if (!mainWindow.isFullScreen()) mainWindow.setFullScreen(true);
+        // 确保置顶状态
+        if (!mainWindow.isAlwaysOnTop()) mainWindow.setAlwaysOnTop(true, 'screen-saver');
       } catch (e) {
         // 忽略错误
       }
@@ -122,12 +304,14 @@ function createMainWindow() {
     
     focusCheckCount++;
     
-    // 检查窗口是否获得焦点，如果没有则使其获得焦点
-    if (!mainWindow.isFocused()) {
-      mainWindow.focus();
-      console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口未获得焦点，已设置焦点`);
-    } else {
-      console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口已获得焦点`);
+    // 仅在 Kiosk 模式下进行焦点强制
+    if (kioskEnabled && runningLocalApps.size === 0 && !localModeActive) {
+      if (!mainWindow.isFocused()) {
+        mainWindow.focus();
+        console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口未获得焦点，已设置焦点`);
+      } else {
+        console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口已获得焦点`);
+      }
     }
     
     // 3秒后（6次检查）切换到每秒检查模式
@@ -143,12 +327,14 @@ function createMainWindow() {
           return;
         }
         
-        // 检查窗口是否获得焦点，如果没有则使其获得焦点
-        if (!mainWindow.isFocused()) {
-          mainWindow.focus();
-          console.log('窗口焦点检查: 定期检查，窗口未获得焦点，已设置焦点');
-        } else {
-          console.log('窗口焦点检查: 定期检查，窗口已获得焦点');
+        // 仅在 Kiosk 模式下进行焦点强制
+        if (kioskEnabled && runningLocalApps.size === 0 && !localModeActive) {
+          if (!mainWindow.isFocused()) {
+            mainWindow.focus();
+            console.log('窗口焦点检查: 定期检查，窗口未获得焦点，已设置焦点');
+          } else {
+            console.log('窗口焦点检查: 定期检查，窗口已获得焦点');
+          }
         }
       }, 1000);
     }
@@ -199,9 +385,12 @@ function createMainWindow() {
   });
   
   mainWindow.on('minimize', (e) => {
-    e.preventDefault();
-    mainWindow.restore();
-    mainWindow.focus();
+    // 在 Kiosk 模式且无本地应用运行时，阻止最小化；否则允许最小化
+    if (kioskEnabled && runningLocalApps.size === 0) {
+      e.preventDefault();
+      mainWindow.restore();
+      mainWindow.focus();
+    }
   });
   
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -871,16 +1060,30 @@ function registerIPCHandlers() {
           return;
         }
         
+        // 启动应用前，暂时解除 Kiosk 模式
+        // 这样新启动的窗口才能获得焦点，且不被主窗口遮挡
+        setKioskMode(false);
+        
+         // 退出全屏和 Kiosk，并取消焦点，确保本地应用能显示在最前端
+         try {
+           if (mainWindow) {
+             mainWindow.setKiosk(false);
+             mainWindow.setFullScreen(false);
+             mainWindow.setAlwaysOnTop(false);
+             mainWindow.blur();
+             if (isWpsLauncherPath(appPath)) {
+               mainWindow.minimize();
+             }
+           }
+         } catch (_) {}
+        
         // 根据不同平台启动应用
         let childProcess;
         const platform = process.platform;
         
         if (platform === 'win32') {
           // Windows: 使用 spawn 启动 .exe 文件
-          childProcess = spawn(appPath, [], { 
-            detached: true, 
-            stdio: 'ignore' 
-          });
+          childProcess = spawn(appPath, [], { detached: true, stdio: 'ignore' });
         } else if (platform === 'darwin') {
           // macOS: 使用 open 命令启动 .app 文件
           childProcess = spawn('open', [appPath], { 
@@ -895,15 +1098,45 @@ function registerIPCHandlers() {
           });
         }
         
-        // 不等待子进程退出，直接返回成功
-        childProcess.unref();
+        const pid = childProcess.pid;
+        runningLocalApps.add(pid);
+        console.log(`本地应用启动 (PID: ${pid})`);
+        if (isWpsLauncherPath(appPath)) {
+          startWpsMonitor();
+        }
+        monitorStartTime = Date.now();
+        localFocusObserved = false;
+        startLocalAppFocusMonitor(appPath);
+        
+        // 监听子进程退出事件
+        childProcess.on('close', (code) => {
+          console.log(`本地应用退出 (PID: ${pid})`);
+          runningLocalApps.delete(pid);
+          if (!isWpsLauncherPath(appPath) && runningLocalApps.size === 0) {
+            setKioskMode(true);
+          }
+        });
+        
+        // 如果子进程启动失败
+        childProcess.on('error', (err) => {
+          console.error('启动子进程失败:', err);
+          runningLocalApps.delete(pid);
+          if (runningLocalApps.size === 0) {
+            setKioskMode(true);
+          }
+          localFocusObserved = false;
+        });
         
         resolve({
           success: true,
-          pid: childProcess.pid
+          pid: pid
         });
       } catch (error) {
         console.error('启动本地应用失败:', error);
+        // 发生错误时，尝试恢复 Kiosk 模式
+        if (runningLocalApps.size === 0) {
+          setKioskMode(true);
+        }
         resolve({
           success: false,
           error: error.message
