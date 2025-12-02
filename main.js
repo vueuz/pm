@@ -37,6 +37,55 @@ function isWpsLauncherPath(p) {
   return lower.endsWith('ksolaunch.exe') || lower.includes('kingsoft') || lower.includes('wps office');
 }
 
+function isDocLikeFile(p) {
+  const ext = (path.extname(p) || '').toLowerCase();
+  return ext === '.doc' || ext === '.docx' || ext === '.ppt' || ext === '.pptx' || ext === '.xls' || ext === '.xlsx' || ext === '.pdf';
+}
+
+function findWpsExecutable(filePath) {
+  if (process.platform !== 'win32') return null;
+  const ext = (path.extname(filePath) || '').toLowerCase();
+  const pf = process.env['ProgramFiles'] || 'C:\\Program Files';
+  const pfx86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const localAppData = process.env['LOCALAPPDATA'] || '';
+  const bases = [pf, pfx86, localAppData].filter(Boolean);
+  let exeNames = ['ksolaunch.exe'];
+  if (ext === '.doc' || ext === '.docx' || ext === '.pdf') {
+    exeNames = ['ksolaunch.exe', 'wps.exe', 'wpspdf.exe', 'pdf.exe'];
+  } else if (ext === '.xls' || ext === '.xlsx') {
+    exeNames = ['ksolaunch.exe', 'et.exe'];
+  } else if (ext === '.ppt' || ext === '.pptx') {
+    exeNames = ['ksolaunch.exe', 'wpp.exe'];
+  }
+  const subDirs = [
+    ['Kingsoft', 'WPS Office'],
+    ['Kingsoft', 'WPS Office', 'office6']
+  ];
+  for (const base of bases) {
+    for (const sub of subDirs) {
+      for (const name of exeNames) {
+        const candidate = path.join(base, ...sub, name);
+        try {
+          if (fs.existsSync(candidate)) return candidate;
+        } catch (_) {}
+      }
+    }
+  }
+  return null;
+}
+
+function getDocumentEditorPathFromConfig() {
+  try {
+    const cfg = configManager.getConfig() || {};
+    const p = cfg.documentEditorPath;
+    if (typeof p === 'string') {
+      const trimmed = p.trim();
+      if (trimmed) return trimmed;
+    }
+  } catch (_) {}
+  return null;
+}
+
 function startWpsMonitor() {
   if (wpsMonitorInterval) return;
   wpsMonitorInterval = setInterval(async () => {
@@ -959,6 +1008,59 @@ function registerIPCHandlers() {
   ipcMain.handle('download-open-file', (event, id) => {
     const info = downloadsStore.current.get(id) || downloadsStore.history.find(i => i.id === id);
     if (!info) return false;
+    try {
+      if (process.platform === 'win32' && isDocLikeFile(info.path)) {
+        let exe = null;
+        const configured = getDocumentEditorPathFromConfig();
+        if (configured && fs.existsSync(configured)) {
+          exe = configured;
+        } else {
+          exe = findWpsExecutable(info.path);
+        }
+        if (exe && fs.existsSync(exe)) {
+          setKioskMode(false);
+          try {
+            if (mainWindow) {
+              mainWindow.setKiosk(false);
+              mainWindow.setFullScreen(false);
+              mainWindow.setAlwaysOnTop(false);
+              mainWindow.blur();
+              if (isWpsLauncherPath(exe)) {
+                try { mainWindow.minimize(); } catch (_) {}
+              }
+            }
+          } catch (_) {}
+          let childProcess;
+          try {
+            childProcess = spawn(exe, [info.path], { detached: true, stdio: 'ignore' });
+          } catch (_) {
+            childProcess = null;
+          }
+          if (childProcess && childProcess.pid) {
+            const pid = childProcess.pid;
+            runningLocalApps.add(pid);
+            startWpsMonitor();
+            monitorStartTime = Date.now();
+            localFocusObserved = false;
+            startLocalAppFocusMonitor(exe);
+            childProcess.on('close', () => {
+              runningLocalApps.delete(pid);
+              if (!isWpsLauncherPath(exe) && runningLocalApps.size === 0) {
+                setKioskMode(true);
+              }
+            });
+            childProcess.on('error', () => {
+              runningLocalApps.delete(pid);
+              if (runningLocalApps.size === 0) {
+                setKioskMode(true);
+              }
+              localFocusObserved = false;
+            });
+            return true;
+          }
+        }
+      }
+    } catch (_) {}
     shell.openPath(info.path);
     return true;
   });

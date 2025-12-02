@@ -155,7 +155,8 @@ const defaultConfig = {
     backgroundColor: '#000000',
     backgroundOpacity: 50,
     blur: 20
-  }
+  },
+  documentEditorPath: 'C\\\\Program Files\\\\Kingsoft\\\\WPS Office\\\\ksolaunch.exe'
 };
 
 class ConfigManager {
