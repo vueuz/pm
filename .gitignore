@@ -32,3 +32,4 @@ yarn-error.log*
 
 /render/assets/load
 /native/node_modules
+renderer/assets/load/init.mp4
