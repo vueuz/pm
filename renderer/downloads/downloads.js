@@ -33,16 +33,20 @@ function renderItem(data) {
     meta.appendChild(bar);
     const actions = document.createElement('div');
     actions.className = 'actions';
-    const openBtn = document.createElement('button');
-    openBtn.className = 'btn';
-    openBtn.textContent = '打开文件';
-    openBtn.onclick = () => window.downloadsAPI.openFile(data.id);
-    const folderBtn = document.createElement('button');
-    folderBtn.className = 'btn';
-    folderBtn.textContent = '打开文件夹';
-    folderBtn.onclick = () => window.downloadsAPI.openFolder(data.id);
-    actions.appendChild(openBtn);
-    actions.appendChild(folderBtn);
+    const isDoc = (() => { const s = String(data.filename || '').toLowerCase(); const i = s.lastIndexOf('.'); const e = i >= 0 ? s.slice(i + 1) : ''; return ['doc','docx','ppt','pptx','xls','xlsx','pdf'].includes(e); })();
+    if (isDoc) {
+      const openBtn = document.createElement('button');
+      openBtn.className = 'btn';
+      openBtn.textContent = '打开文件';
+      openBtn.onclick = () => window.downloadsAPI.openFile(data.id);
+      actions.appendChild(openBtn);
+    } else {
+      const disabledBtn = document.createElement('button');
+      disabledBtn.className = 'btn';
+      disabledBtn.textContent = '不支持在专业模式打开';
+      disabledBtn.disabled = true;
+      actions.appendChild(disabledBtn);
+    }
     row.appendChild(meta);
     row.appendChild(actions);
     listEl.appendChild(row);
@@ -81,17 +85,21 @@ function renderHistory(itemsArr) {
     meta.appendChild(stats);
     const actions = document.createElement('div');
     actions.className = 'actions';
-    const openBtn = document.createElement('button');
-    openBtn.className = 'btn';
-    openBtn.textContent = '打开文件';
-    openBtn.onclick = () => window.downloadsAPI.openFile(d.id);
-    const folderBtn = document.createElement('button');
-    folderBtn.className = 'btn';
-    folderBtn.textContent = '打开文件夹';
-    folderBtn.onclick = () => window.downloadsAPI.openFolder(d.id);
     row.appendChild(meta);
-    actions.appendChild(openBtn);
-    actions.appendChild(folderBtn);
+    const isDoc = (() => { const s = String(d.filename || '').toLowerCase(); const i = s.lastIndexOf('.'); const e = i >= 0 ? s.slice(i + 1) : ''; return ['doc','docx','ppt','pptx','xls','xlsx','pdf'].includes(e); })();
+    if (isDoc) {
+      const openBtn = document.createElement('button');
+      openBtn.className = 'btn';
+      openBtn.textContent = '打开文件';
+      openBtn.onclick = () => window.downloadsAPI.openFile(d.id);
+      actions.appendChild(openBtn);
+    } else {
+      const disabledBtn = document.createElement('button');
+      disabledBtn.className = 'btn';
+      disabledBtn.textContent = '不支持在专业模式打开';
+      disabledBtn.disabled = true;
+      actions.appendChild(disabledBtn);
+    }
     row.appendChild(actions);
     historyEl.appendChild(row);
   });

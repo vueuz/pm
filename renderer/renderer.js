@@ -575,9 +575,25 @@ function renderHistory(items) {
     const stats = document.createElement('div'); stats.className = 'download-stats'; stats.textContent = `${fmtSize(d.totalBytes)} · ${d.state === 'completed' ? '已完成' : '已取消'}`;
     meta.appendChild(name); meta.appendChild(stats);
     const actions = document.createElement('div'); actions.className = 'download-actions';
-    const openBtn = document.createElement('button'); openBtn.className = 'download-btn'; openBtn.textContent = '打开文件'; openBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFile(d.id);
-    const folderBtn = document.createElement('button'); folderBtn.className = 'download-btn'; folderBtn.textContent = '打开文件夹'; folderBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFolder(d.id);
-    row.appendChild(meta); actions.appendChild(openBtn); actions.appendChild(folderBtn); row.appendChild(actions);
+    row.appendChild(meta);
+    const s = String(d.filename || '').toLowerCase();
+    const i = s.lastIndexOf('.');
+    const e = i >= 0 ? s.slice(i + 1) : '';
+    const isDoc = ['doc','docx','ppt','pptx','xls','xlsx','pdf'].includes(e);
+    if (isDoc) {
+      const openBtn = document.createElement('button');
+      openBtn.className = 'download-btn';
+      openBtn.textContent = '打开文件';
+      openBtn.onclick = () => window.downloadsAPI && window.downloadsAPI.openFile(d.id);
+      actions.appendChild(openBtn);
+    } else {
+      const disabledBtn = document.createElement('button');
+      disabledBtn.className = 'download-btn';
+      disabledBtn.textContent = '不支持在专业模式打开';
+      disabledBtn.disabled = true;
+      actions.appendChild(disabledBtn);
+    }
+    row.appendChild(actions);
     elements.dlHistory.appendChild(row);
   });
 }

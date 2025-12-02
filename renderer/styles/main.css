@@ -541,5 +541,7 @@ body {
 .download-actions { display: flex; gap: 8px; align-items: center; }
 .download-btn { border: none; outline: none; background: rgba(255,255,255,0.1); color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
 .download-btn:hover { background: rgba(255,255,255,0.16); }
+.download-btn:disabled { background: rgba(255,255,255,0.06); color: #a3a8b3; cursor: not-allowed; opacity: 0.7; }
+.download-btn:disabled:hover { background: rgba(255,255,255,0.06); }
 
 /* 删除提示气泡样式 */
