@@ -67,7 +67,7 @@ function findWpsExecutable(filePath) {
         const candidate = path.join(base, ...sub, name);
         try {
           if (fs.existsSync(candidate)) return candidate;
-        } catch (_) {}
+        } catch (_) { }
       }
     }
   }
@@ -82,7 +82,7 @@ function getDocumentEditorPathFromConfig() {
       const trimmed = p.trim();
       if (trimmed) return trimmed;
     }
-  } catch (_) {}
+  } catch (_) { }
   return null;
 }
 
@@ -100,7 +100,7 @@ function startWpsMonitor() {
           setKioskMode(true);
         }
       });
-    } catch (_) {}
+    } catch (_) { }
   }, 400);
 }
 
@@ -108,6 +108,10 @@ function startLocalAppFocusMonitor(appPath) {
   if (process.platform !== 'win32') return;
   try {
     try { monitorAppName = path.parse(appPath || '').name || ''; } catch (_) { monitorAppName = ''; }
+
+    // 检查是否为 WPS 相关应用
+    const isWps = isWpsLauncherPath(appPath) || ['wps', 'wpp', 'et', 'ksolaunch'].includes(monitorAppName.toLowerCase());
+
     if (localAppFocusMonitor) {
       clearInterval(localAppFocusMonitor);
       localAppFocusMonitor = null;
@@ -132,13 +136,23 @@ function startLocalAppFocusMonitor(appPath) {
         if (Date.now() - monitorStartTime < 1500) {
           return;
         }
-        if (monitorAppName) {
-          exec('powershell -NoProfile -Command "(Get-Process -Name \'' + monitorAppName + '\' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -ExpandProperty Id) -join \" \""', (err, stdout) => {
+
+        let psCommand = '';
+        if (isWps) {
+          // 如果是 WPS，同时监控所有相关进程
+          psCommand = '(Get-Process wps,wpp,et,ksolaunch -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -ExpandProperty Id) -join " "';
+        } else if (monitorAppName) {
+          psCommand = '(Get-Process -Name \'' + monitorAppName + '\' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -ExpandProperty Id) -join " "';
+        }
+
+        if (psCommand) {
+          exec('powershell -NoProfile -Command "' + psCommand + '"', (err, stdout) => {
             if (err) return;
             const ids = String(stdout).trim().split(/\s+/).map(s => parseInt(s, 10)).filter(n => Number.isFinite(n) && n > 0);
             allowedForegroundPids = new Set(ids);
           });
         }
+
         const hwnd = GetForegroundWindow();
         if (!hwnd || hwnd === 0) return;
         const pidBuf = Buffer.alloc(4);
@@ -155,9 +169,9 @@ function startLocalAppFocusMonitor(appPath) {
             setKioskMode(true);
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }, 700);
-  } catch (_) {}
+  } catch (_) { }
 }
 
 // 切换 Kiosk 模式（锁定/解锁）
@@ -169,7 +183,7 @@ function setKioskMode(enable) {
     console.log('进入 Kiosk 模式：锁定按键，禁用快捷键');
     kioskEnabled = true;
     localModeActive = false;
-    
+
     // 恢复原生按键禁用
     if (nativeKeyBlocker) {
       try {
@@ -178,28 +192,28 @@ function setKioskMode(enable) {
         console.warn('禁用按键失败:', err.message);
       }
     }
-    
+
     // 注册全局快捷键（禁用 Alt+Tab 等）
     registerGlobalShortcuts();
-    
+
     // 恢复全屏与 Kiosk
     try {
       mainWindow.setKiosk(true);
       mainWindow.setFullScreen(true);
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
-    } catch (_) {}
-    
+    } catch (_) { }
+
     // 强制置顶
     mainWindow.setAlwaysOnTop(true, 'screen-saver');
     mainWindow.focus();
-    
+
   } else {
     // 解除锁定模式
     console.log('退出 Kiosk 模式：允许按键，启用快捷键');
     kioskEnabled = false;
     localModeActive = true;
-    
+
     // 解除原生按键禁用
     if (nativeKeyBlocker) {
       try {
@@ -208,17 +222,17 @@ function setKioskMode(enable) {
         console.warn('恢复按键失败:', err.message);
       }
     }
-    
+
     // 注销全局快捷键（允许 Alt+Tab）
     globalShortcut.unregisterAll();
-    
+
     // 取消置顶，允许其他窗口覆盖，并退出全屏/kiosk
     try {
       mainWindow.setAlwaysOnTop(false);
       mainWindow.setKiosk(false);
       mainWindow.setFullScreen(false);
       mainWindow.blur();
-    } catch (_) {}
+    } catch (_) { }
     // 这里不强制最小化/隐藏，避免破坏用户切换路径
   }
 }
@@ -229,7 +243,7 @@ let settingsWindow = null;
 let activationWindow = null;
 let tray = null;
 let downloadsWindow = null;
- 
+
 
 const downloadsStore = {
   current: new Map(),
@@ -249,7 +263,7 @@ function loadDownloadsHistory() {
         downloadsStore.history = arr.slice(0, MAX_DOWNLOAD_HISTORY);
       }
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function saveDownloadsHistory() {
@@ -263,7 +277,7 @@ function saveDownloadsHistory() {
       downloadsStore.history = downloadsStore.history.slice(0, MAX_DOWNLOAD_HISTORY);
     }
     fs.writeFileSync(file, JSON.stringify(downloadsStore.history, null, 2));
-  } catch (_) {}
+  } catch (_) { }
 }
 
 // 许可证存储路径
@@ -327,7 +341,7 @@ function createMainWindow() {
   if (!global.windowLockInterval) {
     global.windowLockInterval = setInterval(() => {
       if (!mainWindow) return;
-      
+
       if (!kioskEnabled || runningLocalApps.size > 0 || localModeActive) {
         return;
       }
@@ -350,9 +364,9 @@ function createMainWindow() {
   let isInitialPhase = true;
   const initialInterval = setInterval(() => {
     if (!mainWindow) return;
-    
+
     focusCheckCount++;
-    
+
     // 仅在 Kiosk 模式下进行焦点强制
     if (kioskEnabled && runningLocalApps.size === 0 && !localModeActive) {
       if (!mainWindow.isFocused()) {
@@ -362,20 +376,20 @@ function createMainWindow() {
         console.log(`窗口焦点检查: 第${focusCheckCount}次检查，窗口已获得焦点`);
       }
     }
-    
+
     // 3秒后（6次检查）切换到每秒检查模式
     if (focusCheckCount >= 6) {
       clearInterval(initialInterval);
       isInitialPhase = false;
       console.log('窗口焦点检查: 3秒内密集检查已完成，切换到每秒检查模式');
-      
+
       // 启动每秒检查的定时器
       const regularInterval = setInterval(() => {
         if (!mainWindow) {
           clearInterval(regularInterval);
           return;
         }
-        
+
         // 仅在 Kiosk 模式下进行焦点强制
         if (kioskEnabled && runningLocalApps.size === 0 && !localModeActive) {
           if (!mainWindow.isFocused()) {
@@ -405,7 +419,7 @@ function createMainWindow() {
   //     }
   //   }
   // });
-  
+
   // 应用启动时就禁用按键
   if (nativeKeyBlocker) {
     try {
@@ -432,7 +446,7 @@ function createMainWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
-  
+
   mainWindow.on('minimize', (e) => {
     // 在 Kiosk 模式且无本地应用运行时，阻止最小化；否则允许最小化
     if (kioskEnabled && runningLocalApps.size === 0) {
@@ -441,7 +455,7 @@ function createMainWindow() {
       mainWindow.focus();
     }
   });
-  
+
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     return {
       action: 'allow',
@@ -473,49 +487,49 @@ function createMainWindow() {
           height: 1
         }
       }));
-    } catch (_) {}
+    } catch (_) { }
   });
-  
+
   // 处理导航事件
   mainWindow.webContents.session.webRequest.onBeforeRequest((details, callback) => {
     callback({ cancel: false });
   });
-  
+
   // 处理响应头
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders || {};
     callback({ responseHeaders: headers });
   });
-  
+
   // 监听导航事件，当URL发生变化时通知渲染进程刷新iframe
   mainWindow.webContents.on('did-navigate', (event, url, httpResponseCode, httpStatusText) => {
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('window-url-changed', { url, httpResponseCode, httpStatusText });
     }
   });
-  
+
   // 监听导航完成事件
   mainWindow.webContents.on('did-navigate-in-page', (event, url, isMainFrame) => {
     if (mainWindow && mainWindow.webContents) {
       mainWindow.webContents.send('window-url-changed', { url, isMainFrame });
     }
   });
-  
+
   // 配置持久化会话，确保iframe中的cookie能够正确存储
   const webContainerSession = session.fromPartition('persist:webcontainer');
   webContainerSession.setUserAgent(mainWindow.webContents.getUserAgent());
-  
+
   // 启用cookies
   webContainerSession.cookies.on('changed', (event, cookie, cause, removed) => {
     console.log('Cookie发生变化:', cookie.name, cookie.domain, cause, removed ? '已删除' : '已添加/修改');
   });
-  
+
   // 设置网络请求头，确保cookie能正确发送
   webContainerSession.webRequest.onBeforeSendHeaders((details, callback) => {
     // 确保cookie头被正确设置
     callback({ requestHeaders: details.requestHeaders });
   });
-  
+
   // 设置cookie策略，允许所有cookie
   webContainerSession.setPermissionRequestHandler((webContents, permission, callback) => {
     if (permission === 'cookies') {
@@ -524,7 +538,7 @@ function createMainWindow() {
       callback(false); // 拒绝其他权限
     }
   });
-  
+
   // 禁用拼写检查以减少干扰
   webContainerSession.setSpellCheckerEnabled(false);
 }
@@ -562,7 +576,7 @@ function registerDownloadListener() {
       if (mainWindow && mainWindow.webContents) {
         mainWindow.webContents.send('download-start', info);
       }
-      
+
       let lastBytes = 0;
       let lastTime = Date.now();
       item.on('updated', () => {
@@ -599,21 +613,21 @@ function registerDownloadListener() {
             mainWindow.webContents.send('download-cancelled', current);
           }
         }
-        
+
       });
       try {
         const win = BrowserWindow.fromWebContents(webContents);
         if (win && win !== mainWindow && win !== settingsWindow && win !== activationWindow && win !== downloadsWindow) {
-          try { win.close(); } catch (_) {}
+          try { win.close(); } catch (_) { }
         }
-      } catch (_) {}
+      } catch (_) { }
     });
   };
   handleWillDownload(session.defaultSession);
   try {
     const defaultPartition = session.fromPartition('persist:default');
     handleWillDownload(defaultPartition);
-  } catch (_) {}
+  } catch (_) { }
 }
 
 function createTray() {
@@ -687,9 +701,9 @@ function toggleDownloadsWindow() {
   }
 }
 
- 
 
- 
+
+
 
 // 创建激活窗口
 function createActivationWindow() {
@@ -732,24 +746,24 @@ function createActivationWindow() {
 async function checkLicenseOnStartup() {
   try {
     const machineId = await getMachineId();
-    
+
     // 检查许可证文件是否存在
     if (!fs.existsSync(licenseFile)) {
       console.log('许可证文件不存在，需要激活');
       return false;
     }
-    
+
     // 读取许可证
     const license = fs.readFileSync(licenseFile, 'utf8').trim();
-    
+
     // 验证许可证
     const result = verifyLicense(machineId, license);
-    
+
     if (result.valid) {
       console.log('许可证验证成功:', result.message);
       console.log('过期日期:', result.expiryDate);
       console.log('剩余天数:', result.remainingDays);
-      
+
       // 如果剩余天数少于30天，显示警告
       if (result.remainingDays < 30) {
         setTimeout(() => {
@@ -764,7 +778,7 @@ async function checkLicenseOnStartup() {
           }
         }, 3000);
       }
-      
+
       return true;
     } else {
       console.log('许可证验证失败:', result.message);
@@ -816,12 +830,12 @@ function createSettingsWindow() {
 
   // 加载设置界面
   settingsWindow.loadFile('renderer/settings/index.html');
-  
+
   // 开发模式下打开开发者工具
   if (process.env.NODE_ENV === 'development') {
     settingsWindow.webContents.openDevTools();
   }
-  
+
   // 设置窗口创建后继续保持按键禁用
   settingsWindow.on('ready-to-show', () => {
     if (nativeKeyBlocker) {
@@ -846,7 +860,7 @@ async function getSystemInfo() {
     const cpu = await si.cpuCurrentSpeed();
     const mem = await si.mem();
     const cpuLoad = await si.currentLoad();
-    
+
     return {
       cpuUsage: Math.round(cpuLoad.currentLoad),
       memoryUsage: Math.round((mem.used / mem.total) * 100),
@@ -870,7 +884,7 @@ app.whenReady().then(async () => {
   try {
     // 检查许可证
     const isLicenseValid = await checkLicenseOnStartup();
-    
+
     if (!isLicenseValid) {
       // 许可证无效，显示激活窗口
       createActivationWindow();
@@ -906,7 +920,7 @@ app.whenReady().then(async () => {
       createMainWindow();
     }
   });
-  
+
   // 添加会话权限处理
   app.on('session-created', (session) => {
     session.setPermissionRequestHandler((webContents, permission, callback) => {
@@ -922,7 +936,7 @@ function registerIPCHandlers() {
   ipcMain.handle('get-system-info', async () => {
     return await getSystemInfo();
   });
-  
+
   // 获取系统用户名
   ipcMain.handle('get-username', async () => {
     try {
@@ -950,7 +964,7 @@ function registerIPCHandlers() {
       if (ok && mainWindow && mainWindow.webContents) {
         mainWindow.webContents.send('config-updated', configManager.getConfig());
       }
-    } catch (_) {}
+    } catch (_) { }
     return ok;
   });
 
@@ -1026,10 +1040,10 @@ function registerIPCHandlers() {
               mainWindow.setAlwaysOnTop(false);
               mainWindow.blur();
               if (isWpsLauncherPath(exe)) {
-                try { mainWindow.minimize(); } catch (_) {}
+                try { mainWindow.minimize(); } catch (_) { }
               }
             }
-          } catch (_) {}
+          } catch (_) { }
           let childProcess;
           try {
             childProcess = spawn(exe, [info.path], { detached: true, stdio: 'ignore' });
@@ -1060,7 +1074,7 @@ function registerIPCHandlers() {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) { }
     shell.openPath(info.path);
     return true;
   });
@@ -1072,7 +1086,7 @@ function registerIPCHandlers() {
     return true;
   });
 
-  
+
 
   // 许可证管理相关IPC处理
   ipcMain.handle('get-machine-id', async () => {
@@ -1087,7 +1101,7 @@ function registerIPCHandlers() {
     try {
       const machineId = await getMachineId();
       const result = verifyLicense(machineId, license);
-      
+
       if (result.valid) {
         // 保存许可证
         if (saveLicense(license)) {
@@ -1125,14 +1139,14 @@ function registerIPCHandlers() {
   ipcMain.handle('check-license', async () => {
     try {
       const machineId = await getMachineId();
-      
+
       if (!fs.existsSync(licenseFile)) {
         return {
           valid: false,
           message: '未激活'
         };
       }
-      
+
       const license = fs.readFileSync(licenseFile, 'utf8').trim();
       return verifyLicense(machineId, license);
     } catch (error) {
@@ -1148,7 +1162,7 @@ function registerIPCHandlers() {
       activationWindow.close();
     }
   });
-  
+
   // 启动本地应用
   ipcMain.handle('launch-local-app', (event, appPath) => {
     return new Promise((resolve) => {
@@ -1161,45 +1175,45 @@ function registerIPCHandlers() {
           });
           return;
         }
-        
+
         // 启动应用前，暂时解除 Kiosk 模式
         // 这样新启动的窗口才能获得焦点，且不被主窗口遮挡
         setKioskMode(false);
-        
-         // 退出全屏和 Kiosk，并取消焦点，确保本地应用能显示在最前端
-         try {
-           if (mainWindow) {
-             mainWindow.setKiosk(false);
-             mainWindow.setFullScreen(false);
-             mainWindow.setAlwaysOnTop(false);
-             mainWindow.blur();
-             if (isWpsLauncherPath(appPath)) {
-               mainWindow.minimize();
-             }
-           }
-         } catch (_) {}
-        
+
+        // 退出全屏和 Kiosk，并取消焦点，确保本地应用能显示在最前端
+        try {
+          if (mainWindow) {
+            mainWindow.setKiosk(false);
+            mainWindow.setFullScreen(false);
+            mainWindow.setAlwaysOnTop(false);
+            mainWindow.blur();
+            if (isWpsLauncherPath(appPath)) {
+              mainWindow.minimize();
+            }
+          }
+        } catch (_) { }
+
         // 根据不同平台启动应用
         let childProcess;
         const platform = process.platform;
-        
+
         if (platform === 'win32') {
           // Windows: 使用 spawn 启动 .exe 文件
           childProcess = spawn(appPath, [], { detached: true, stdio: 'ignore' });
         } else if (platform === 'darwin') {
           // macOS: 使用 open 命令启动 .app 文件
-          childProcess = spawn('open', [appPath], { 
-            detached: true, 
-            stdio: 'ignore' 
+          childProcess = spawn('open', [appPath], {
+            detached: true,
+            stdio: 'ignore'
           });
         } else {
           // Linux: 直接执行文件
-          childProcess = spawn(appPath, [], { 
-            detached: true, 
-            stdio: 'ignore' 
+          childProcess = spawn(appPath, [], {
+            detached: true,
+            stdio: 'ignore'
           });
         }
-        
+
         const pid = childProcess.pid;
         runningLocalApps.add(pid);
         console.log(`本地应用启动 (PID: ${pid})`);
@@ -1209,7 +1223,7 @@ function registerIPCHandlers() {
         monitorStartTime = Date.now();
         localFocusObserved = false;
         startLocalAppFocusMonitor(appPath);
-        
+
         // 监听子进程退出事件
         childProcess.on('close', (code) => {
           console.log(`本地应用退出 (PID: ${pid})`);
@@ -1218,7 +1232,7 @@ function registerIPCHandlers() {
             setKioskMode(true);
           }
         });
-        
+
         // 如果子进程启动失败
         childProcess.on('error', (err) => {
           console.error('启动子进程失败:', err);
@@ -1228,7 +1242,7 @@ function registerIPCHandlers() {
           }
           localFocusObserved = false;
         });
-        
+
         resolve({
           success: true,
           pid: pid
@@ -1295,7 +1309,7 @@ app.on('window-all-closed', () => {
 // 应用退出前注销所有快捷键并恢复按键
 app.on('will-quit', () => {
   console.log('应用即将退出，恢复所有按键');
-  
+
   // 恢复原生模块禁用的按键
   if (nativeKeyBlocker) {
     try {
@@ -1305,24 +1319,24 @@ app.on('will-quit', () => {
       console.error('恢复按键失败:', err.message);
     }
   }
-  
+
   // 注销全局快捷键
   globalShortcut.unregisterAll();
-  try { const s = session.fromPartition('persist:default'); if (s && s.flushStorageData) { s.flushStorageData(); } } catch (_) {}
-  
+  try { const s = session.fromPartition('persist:default'); if (s && s.flushStorageData) { s.flushStorageData(); } } catch (_) { }
+
   // 停止热键拦截
-  try { 
+  try {
     if (hotkeyBlocker && hotkeyBlocker.stop) {
-      hotkeyBlocker.stop(); 
+      hotkeyBlocker.stop();
     }
   } catch (e) {
     console.warn('停止热键拦截时出错:', e.message);
   }
-  
+
   // 清除窗口锁定定时器
   if (global.windowLockInterval) {
     clearInterval(global.windowLockInterval);
     global.windowLockInterval = null;
   }
-  try { saveDownloadsHistory(); } catch (_) {}
+  try { saveDownloadsHistory(); } catch (_) { }
 });
