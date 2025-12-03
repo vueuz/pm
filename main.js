@@ -175,13 +175,22 @@ function startLocalAppFocusMonitor(appPath) {
 
         // 状态机逻辑
         if (!localFocusObserved) {
-          // 初始状态：等待本地应用获得焦点
-          // 重要：只有当 allowedForegroundPids 有内容且包含当前 PID 时，才认为是目标应用
-          // 避免在列表为空时误将桌面或其他窗口识别为目标应用
           if (activePid !== process.pid && allowedForegroundPids.size > 0 && allowedForegroundPids.has(activePid)) {
             firstNonElectronObservedPid = activePid;
             localFocusObserved = true;
             console.log(`✅ 本地应用已获得焦点 (PID: ${activePid})`);
+          } else if (activePid !== process.pid && allowedForegroundPids.size === 0) {
+            const cmd = `(Get-Process -Id ${activePid} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty ProcessName)`;
+            exec('powershell -NoProfile -Command "' + cmd + '"', (err, stdout) => {
+              if (err) return;
+              const pname = String(stdout).trim().toLowerCase();
+              const isWpsName = ['wps','wpp','et','ksolaunch'].includes(pname);
+              if ((isWps && isWpsName) || (monitorAppName && pname.includes(monitorAppName.toLowerCase()))) {
+                firstNonElectronObservedPid = activePid;
+                localFocusObserved = true;
+                console.log(`✅ 本地应用已获得焦点 (PID: ${activePid})`);
+              }
+            });
           }
         } else {
           // 监控状态：检测焦点是否离开本地应用
