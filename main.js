@@ -176,7 +176,9 @@ function startLocalAppFocusMonitor(appPath) {
         // 状态机逻辑
         if (!localFocusObserved) {
           // 初始状态：等待本地应用获得焦点
-          if (activePid !== process.pid && (allowedForegroundPids.size === 0 || allowedForegroundPids.has(activePid))) {
+          // 重要：只有当 allowedForegroundPids 有内容且包含当前 PID 时，才认为是目标应用
+          // 避免在列表为空时误将桌面或其他窗口识别为目标应用
+          if (activePid !== process.pid && allowedForegroundPids.size > 0 && allowedForegroundPids.has(activePid)) {
             firstNonElectronObservedPid = activePid;
             localFocusObserved = true;
             console.log(`✅ 本地应用已获得焦点 (PID: ${activePid})`);
