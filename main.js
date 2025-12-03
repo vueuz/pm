@@ -111,6 +111,7 @@ function startLocalAppFocusMonitor(appPath) {
 
     // 检查是否为 WPS 相关应用
     const isWps = isWpsLauncherPath(appPath) || ['wps', 'wpp', 'et', 'ksolaunch'].includes(monitorAppName.toLowerCase());
+    console.log(`🔍 启动焦点监控: ${isWps ? 'WPS应用' : monitorAppName}`);
 
     if (localAppFocusMonitor) {
       clearInterval(localAppFocusMonitor);
@@ -122,9 +123,12 @@ function startLocalAppFocusMonitor(appPath) {
     const user32 = koffi.load('user32.dll');
     const GetForegroundWindow = user32.func('GetForegroundWindow', 'intptr', []);
     const GetWindowThreadProcessId = user32.func('GetWindowThreadProcessId', 'uint32', ['intptr', 'uint32*']);
+
     localAppFocusMonitor = setInterval(() => {
       try {
+        // 如果没有本地应用运行，停止监控
         if (runningLocalApps.size === 0) {
+          console.log('📌 所有本地应用已退出，停止焦点监控');
           clearInterval(localAppFocusMonitor);
           localAppFocusMonitor = null;
           localFocusObserved = false;
@@ -133,10 +137,13 @@ function startLocalAppFocusMonitor(appPath) {
           allowedForegroundPids.clear();
           return;
         }
+
+        // 启动后等待1.5秒再开始监控，给应用足够的启动时间
         if (Date.now() - monitorStartTime < 1500) {
           return;
         }
 
+        // 更新允许的前台进程PID列表
         let psCommand = '';
         if (isWps) {
           // 如果是 WPS，同时监控所有相关进程
@@ -153,25 +160,43 @@ function startLocalAppFocusMonitor(appPath) {
           });
         }
 
+        // 获取当前前台窗口的进程ID
         const hwnd = GetForegroundWindow();
         if (!hwnd || hwnd === 0) return;
         const pidBuf = Buffer.alloc(4);
         GetWindowThreadProcessId(hwnd, pidBuf);
         const activePid = pidBuf.readUInt32LE(0);
         if (activePid <= 0) return;
+
+        // 状态机逻辑
         if (!localFocusObserved) {
+          // 初始状态：等待本地应用获得焦点
           if (activePid !== process.pid && (allowedForegroundPids.size === 0 || allowedForegroundPids.has(activePid))) {
             firstNonElectronObservedPid = activePid;
             localFocusObserved = true;
+            console.log(`✅ 本地应用已获得焦点 (PID: ${activePid})`);
           }
         } else {
-          if (!allowedForegroundPids.has(activePid) && activePid !== firstNonElectronObservedPid) {
+          // 监控状态：检测焦点是否离开本地应用
+          const isElectronPid = (activePid === process.pid);
+          const isAllowedPid = allowedForegroundPids.has(activePid);
+          const isFirstObservedPid = (activePid === firstNonElectronObservedPid);
+
+          // 如果当前焦点不是Electron、不是允许的应用，也不是最初观察到的应用
+          // 说明焦点已经切换到其他窗口（例如桌面、资源管理器等）
+          if (!isElectronPid && !isAllowedPid && !isFirstObservedPid) {
+            console.log(`⚠️ 检测到WPS失去焦点，当前焦点PID: ${activePid}`);
+            console.log(`📱 恢复Electron窗口并进入Kiosk模式`);
             setKioskMode(true);
           }
         }
-      } catch (_) { }
+      } catch (err) {
+        console.error('焦点监控错误:', err.message);
+      }
     }, 700);
-  } catch (_) { }
+  } catch (err) {
+    console.error('启动焦点监控失败:', err.message);
+  }
 }
 
 // 切换 Kiosk 模式（锁定/解锁）
