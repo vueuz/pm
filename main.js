@@ -88,15 +88,20 @@ function getDocumentEditorPathFromConfig() {
 
 function startWpsMonitor() {
   if (wpsMonitorInterval) return;
+  console.log('🔍 启动 WPS 进程监控');
   wpsMonitorInterval = setInterval(async () => {
     try {
       exec('powershell -NoProfile -Command "(Get-Process wps,wpp,et -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }).Count"', (err, stdout) => {
         if (err) return;
         const count = parseInt(String(stdout).trim(), 10);
         if (!count || count === 0) {
+          console.log('⚠️ 所有 WPS 进程已退出');
           clearInterval(wpsMonitorInterval);
           wpsMonitorInterval = null;
           localModeActive = false;
+          // 删除虚拟 PID 标记
+          runningLocalApps.delete(-1);
+          console.log(`📊 当前运行的应用数: ${runningLocalApps.size}`);
           setKioskMode(true);
         }
       });
@@ -1076,25 +1081,44 @@ function registerIPCHandlers() {
             childProcess = null;
           }
           if (childProcess && childProcess.pid) {
-            const pid = childProcess.pid;
-            runningLocalApps.add(pid);
-            startWpsMonitor();
-            monitorStartTime = Date.now();
-            localFocusObserved = false;
-            startLocalAppFocusMonitor(exe);
-            childProcess.on('close', () => {
-              runningLocalApps.delete(pid);
-              if (!isWpsLauncherPath(exe) && runningLocalApps.size === 0) {
-                setKioskMode(true);
-              }
-            });
-            childProcess.on('error', () => {
-              runningLocalApps.delete(pid);
-              if (runningLocalApps.size === 0) {
-                setKioskMode(true);
-              }
+            const isWpsApp = isWpsLauncherPath(exe);
+
+            if (isWpsApp) {
+              // WPS 启动器会立即退出，不追踪启动器进程
+              // 使用一个虚拟标记(-1)表示 WPS 正在运行
+              console.log('🚀 启动 WPS 应用，使用虚拟标记');
+              runningLocalApps.add(-1);  // 虚拟 PID 标记
+              startWpsMonitor();  // 依赖 WPS 监控器来检测进程
+              monitorStartTime = Date.now();
               localFocusObserved = false;
-            });
+              startLocalAppFocusMonitor(exe);
+
+              // 启动器进程的事件我们不关心，因为它会立即退出
+              childProcess.unref();  // 不阻止父进程退出
+            } else {
+              // 非 WPS 应用，正常追踪进程
+              const pid = childProcess.pid;
+              console.log(`🚀 启动本地应用 (PID: ${pid})`);
+              runningLocalApps.add(pid);
+              monitorStartTime = Date.now();
+              localFocusObserved = false;
+              startLocalAppFocusMonitor(exe);
+
+              childProcess.on('close', () => {
+                console.log(`📌 应用退出 (PID: ${pid})`);
+                runningLocalApps.delete(pid);
+                if (runningLocalApps.size === 0) {
+                  setKioskMode(true);
+                }
+              });
+              childProcess.on('error', () => {
+                runningLocalApps.delete(pid);
+                if (runningLocalApps.size === 0) {
+                  setKioskMode(true);
+                }
+                localFocusObserved = false;
+              });
+            }
             return true;
           }
         }
@@ -1239,39 +1263,57 @@ function registerIPCHandlers() {
           });
         }
 
-        const pid = childProcess.pid;
-        runningLocalApps.add(pid);
-        console.log(`本地应用启动 (PID: ${pid})`);
-        if (isWpsLauncherPath(appPath)) {
-          startWpsMonitor();
-        }
-        monitorStartTime = Date.now();
-        localFocusObserved = false;
-        startLocalAppFocusMonitor(appPath);
+        const isWpsApp = isWpsLauncherPath(appPath);
 
-        // 监听子进程退出事件
-        childProcess.on('close', (code) => {
-          console.log(`本地应用退出 (PID: ${pid})`);
-          runningLocalApps.delete(pid);
-          if (!isWpsLauncherPath(appPath) && runningLocalApps.size === 0) {
-            setKioskMode(true);
-          }
-        });
-
-        // 如果子进程启动失败
-        childProcess.on('error', (err) => {
-          console.error('启动子进程失败:', err);
-          runningLocalApps.delete(pid);
-          if (runningLocalApps.size === 0) {
-            setKioskMode(true);
-          }
+        if (isWpsApp) {
+          // WPS 启动器会立即退出，不追踪启动器进程
+          console.log('🚀 启动 WPS 应用，使用虚拟标记');
+          runningLocalApps.add(-1);  // 虚拟 PID 标记
+          startWpsMonitor();  // 依赖 WPS 监控器来检测进程
+          monitorStartTime = Date.now();
           localFocusObserved = false;
-        });
+          startLocalAppFocusMonitor(appPath);
 
-        resolve({
-          success: true,
-          pid: pid
-        });
+          // 启动器进程的事件我们不关心
+          childProcess.unref();
+
+          resolve({
+            success: true,
+            pid: -1  // 虚拟 PID
+          });
+        } else {
+          // 非 WPS 应用，正常追踪进程
+          const pid = childProcess.pid;
+          runningLocalApps.add(pid);
+          console.log(`🚀 启动本地应用 (PID: ${pid})`);
+          monitorStartTime = Date.now();
+          localFocusObserved = false;
+          startLocalAppFocusMonitor(appPath);
+
+          // 监听子进程退出事件
+          childProcess.on('close', (code) => {
+            console.log(`📌 应用退出 (PID: ${pid})`);
+            runningLocalApps.delete(pid);
+            if (runningLocalApps.size === 0) {
+              setKioskMode(true);
+            }
+          });
+
+          // 如果子进程启动失败
+          childProcess.on('error', (err) => {
+            console.error('启动子进程失败:', err);
+            runningLocalApps.delete(pid);
+            if (runningLocalApps.size === 0) {
+              setKioskMode(true);
+            }
+            localFocusObserved = false;
+          });
+
+          resolve({
+            success: true,
+            pid: pid
+          });
+        }
       } catch (error) {
         console.error('启动本地应用失败:', error);
         // 发生错误时，尝试恢复 Kiosk 模式
